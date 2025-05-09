@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Owner Dashboard - Construction Corp.</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<link
+			rel="stylesheet"
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+		/>
+		<script>
+			tailwind.config = {
+				darkMode: "class",
+				theme: {
+					extend: {
+						colors: {
+							primary: "#8B1C23",
+							secondary: "#A52A2A",
+						},
+					},
+				},
+			};
+		</script>
+	</head>
+	<body
+		class="bg-gray-100 dark:bg-gray-900 dark:text-gray-100 transition-colors"
+	>
+		<!-- Sidebar -->
+		<div
+			id="sidebar"
+			class="fixed top-0 left-0 h-full w-64 bg-primary text-white shadow-lg transition-transform duration-300 z-40"
+		>
+			<div class="p-4">
+				<div class="flex items-center justify-between mb-8">
+					<img src="../../images/imfLogo.png" alt="Logo" class="h-12" />
+					<button
+						id="closeSidebar"
+						class="text-white hover:bg-secondary hover:text-white focus:outline-none p-2 rounded-full transition-colors border border-white/20"
+						title="Close sidebar"
+					>
+						<i class="fas fa-chevron-left text-2xl"></i>
+					</button>
+				</div>
+				<hr class="border-white/20 mb-6" />
+				<nav>
+					<ul class="space-y-2">
+						<li>
+							<a
+								href="#"
+								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+							>
+								<i
+									class="fas fa-home group-hover:scale-110 transition-transform"
+								></i>
+								<span>Dashboard</span>
+							</a>
+						</li>
+						<li>
+							<a
+								href="#"
+								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+							>
+								<i
+									class="fas fa-building group-hover:scale-110 transition-transform"
+								></i>
+								<span>Projects</span>
+							</a>
+						</li>
+						<li>
+							<a
+								href="#"
+								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+							>
+								<i
+									class="fas fa-chart-line group-hover:scale-110 transition-transform"
+								></i>
+								<span>Financials</span>
+							</a>
+						</li>
+						<li>
+							<a
+								href="#"
+								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+							>
+								<i
+									class="fas fa-file-invoice-dollar group-hover:scale-110 transition-transform"
+								></i>
+								<span>Invoices</span>
+							</a>
+						</li>
+					</ul>
+				</nav>
+			</div>
+		</div>
+
+		<!-- Sidebar Overlay for mobile -->
+		<div
+			id="sidebarOverlay"
+			class="fixed inset-0 bg-black bg-opacity-30 z-30 hidden transition-opacity duration-300"
+		></div>
+
+		<!-- Main Content -->
+		<div id="mainContent" class="transition-all duration-300">
+			<!-- Top Navigation -->
+			<nav class="bg-white dark:bg-gray-800 shadow-lg transition-colors">
+				<div class="max-w-full mx-auto px-4">
+					<div class="flex justify-between items-center h-16">
+						<div class="flex items-center">
+							<button
+								id="openSidebar"
+								class="text-gray-500 hover:bg-primary hover:text-white p-2 rounded-full transition-colors border border-gray-300 mr-2 shadow-sm"
+							>
+								<i class="fas fa-bars text-xl"></i>
+							</button>
+							<h1
+								class="ml-2 text-xl font-semibold text-gray-800 dark:text-gray-100"
+							>
+								Owner Dashboard
+							</h1>
+						</div>
+						<div class="flex items-center space-x-4">
+							<div class="relative">
+								<button
+									id="userMenuBtn"
+									class="flex items-center space-x-2 text-gray-700 dark:text-gray-100 hover:text-primary focus:outline-none"
+								>
+									<span
+										id="userAvatar"
+										class="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm"
+									></span>
+									<span id="userFirstName" class="hidden md:block"></span>
+									<i class="fas fa-chevron-down ml-1"></i>
+								</button>
+								<div
+									id="userDropdown"
+									class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50"
+								>
+									<a
+										href="#"
+										class="block px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+									>
+										<i class="fas fa-user mr-2"></i>Profile
+									</a>
+									<button
+										id="toggleDarkMode"
+										class="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+									>
+										<i class="fas fa-moon mr-2"></i>
+										<span id="darkModeText">Dark Mode</span>
+									</button>
+									<button
+										id="logoutBtn"
+										class="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+									>
+										<i class="fas fa-sign-out-alt mr-2"></i>Log Out
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</nav>
+
+			<!-- Dashboard Content -->
+			<main class="p-6">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+					<!-- Stats Cards -->
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center">
+							<div
+								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
+							>
+								<i class="fas fa-building text-2xl"></i>
+							</div>
+							<div class="ml-4">
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Active Projects
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+								>
+									15
+								</p>
+							</div>
+						</div>
+					</div>
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center">
+							<div
+								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
+							>
+								<i class="fas fa-dollar-sign text-2xl"></i>
+							</div>
+							<div class="ml-4">
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Total Revenue
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+								>
+									$1.2M
+								</p>
+							</div>
+						</div>
+					</div>
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center">
+							<div
+								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
+							>
+								<i class="fas fa-file-invoice text-2xl"></i>
+							</div>
+							<div class="ml-4">
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Pending Invoices
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+								>
+									8
+								</p>
+							</div>
+						</div>
+					</div>
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center">
+							<div
+								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
+							>
+								<i class="fas fa-chart-pie text-2xl"></i>
+							</div>
+							<div class="ml-4">
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Profit Margin
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+								>
+									24%
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Welcome Message -->
+				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+					<h2
+						class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4"
+					>
+						Welcome to Construction Corp.
+					</h2>
+					<p class="text-gray-600 dark:text-gray-300">
+						As the owner, you have access to all project details, financial
+						reports, and business analytics. Use the sidebar navigation to
+						manage your construction projects and monitor business performance.
+					</p>
+				</div>
+			</main>
+		</div>
+
+		<script>
+			// Sidebar Toggle
+			const sidebar = document.getElementById("sidebar");
+			const mainContent = document.getElementById("mainContent");
+			const openSidebarBtn = document.getElementById("openSidebar");
+			const closeSidebarBtn = document.getElementById("closeSidebar");
+			const sidebarOverlay = document.getElementById("sidebarOverlay");
+
+			function toggleSidebar(show) {
+				if (show) {
+					sidebar.classList.remove("-translate-x-full");
+					mainContent.classList.add("ml-64");
+					if (window.innerWidth < 1024) {
+						sidebarOverlay.classList.remove("hidden");
+						sidebarOverlay.classList.add("block");
+					}
+					document.getElementById("openSidebar").classList.add("hidden");
+				} else {
+					sidebar.classList.add("-translate-x-full");
+					mainContent.classList.remove("ml-64");
+					sidebarOverlay.classList.remove("block");
+					sidebarOverlay.classList.add("hidden");
+					document.getElementById("openSidebar").classList.remove("hidden");
+				}
+			}
+
+			// Default: sidebar open on desktop, closed on mobile
+			if (window.innerWidth >= 1024) {
+				toggleSidebar(true);
+			} else {
+				toggleSidebar(false);
+			}
+
+			openSidebarBtn.addEventListener("click", () => toggleSidebar(true));
+			closeSidebarBtn.addEventListener("click", () => toggleSidebar(false));
+			sidebarOverlay.addEventListener("click", () => toggleSidebar(false));
+
+			window.addEventListener("resize", () => {
+				if (window.innerWidth >= 1024) {
+					toggleSidebar(true);
+				} else {
+					toggleSidebar(false);
+				}
+			});
+
+			// User Dropdown
+			const userMenuBtn = document.getElementById("userMenuBtn");
+			const userDropdown = document.getElementById("userDropdown");
+			userMenuBtn.addEventListener("click", function (e) {
+				e.stopPropagation();
+				userDropdown.classList.toggle("hidden");
+			});
+			document.addEventListener("click", function (e) {
+				if (!userMenuBtn.contains(e.target)) {
+					userDropdown.classList.add("hidden");
+				}
+			});
+
+			// Set user initials and name from sessionStorage
+			const user = JSON.parse(sessionStorage.getItem("user"));
+			if (user) {
+				const initials =
+					(user.user_firstname[0] || "") + (user.user_lastname[0] || "");
+				document.getElementById("userAvatar").textContent =
+					initials.toUpperCase();
+				document.getElementById("userFirstName").textContent =
+					user.user_firstname;
+			}
+
+			// Dark Mode
+			const html = document.documentElement;
+			const darkModeBtn = document.getElementById("toggleDarkMode");
+			const darkModeText = document.getElementById("darkModeText");
+			function setDarkMode(isDark) {
+				if (isDark) {
+					html.classList.add("dark");
+					localStorage.setItem("theme", "dark");
+					darkModeText.textContent = "Light Mode";
+					darkModeBtn.querySelector("i").classList.remove("fa-moon");
+					darkModeBtn.querySelector("i").classList.add("fa-sun");
+				} else {
+					html.classList.remove("dark");
+					localStorage.setItem("theme", "light");
+					darkModeText.textContent = "Dark Mode";
+					darkModeBtn.querySelector("i").classList.remove("fa-sun");
+					darkModeBtn.querySelector("i").classList.add("fa-moon");
+				}
+			}
+			// On load
+			if (localStorage.getItem("theme") === "dark") {
+				setDarkMode(true);
+			} else {
+				setDarkMode(false);
+			}
+			darkModeBtn.addEventListener("click", function (e) {
+				e.stopPropagation();
+				setDarkMode(!html.classList.contains("dark"));
+			});
+
+			// Log Out
+			document
+				.getElementById("logoutBtn")
+				.addEventListener("click", function () {
+					sessionStorage.clear();
+					window.location.href = "../login.html";
+				});
+		</script>
+	</body>
+</html>

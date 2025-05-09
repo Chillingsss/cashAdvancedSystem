@@ -1,0 +1,522 @@
+// request.js - Handles cash advance request functionality for employees
+document.addEventListener("DOMContentLoaded", function () {
+	// Get user data from session storage
+	const user = JSON.parse(sessionStorage.getItem("user"));
+
+	// Load cash methods for dropdown
+	loadCashMethods();
+
+	// Load status requests for reference
+	loadStatusRequests();
+
+	// Load user's request history
+	loadRequestHistory();
+
+	// Filter and search event listeners
+	const dateFilter = document.getElementById("dateFilter");
+	const startDate = document.getElementById("startDate");
+	const endDate = document.getElementById("endDate");
+	const searchInput = document.getElementById("searchInput");
+	const customDateRange = document.getElementById("customDateRange");
+
+	if (dateFilter) {
+		dateFilter.addEventListener("change", function () {
+			customDateRange.classList.toggle("hidden", this.value !== "custom");
+			applyFiltersAndRender();
+		});
+	}
+	if (startDate) startDate.addEventListener("change", applyFiltersAndRender);
+	if (endDate) endDate.addEventListener("change", applyFiltersAndRender);
+	if (searchInput) searchInput.addEventListener("input", applyFiltersAndRender);
+
+	// Event listeners
+	document
+		.querySelector(".bg-primary.hover\\:bg-secondary")
+		.addEventListener("click", openRequestModal);
+});
+
+// Load cash method options for the dropdown
+function loadCashMethods() {
+	const formData = new FormData();
+	formData.append("operation", "CashMethod");
+
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+		.then((response) => {
+			const cashMethods = response.data;
+			// Store for later use in the modal
+			sessionStorage.setItem("cashMethods", JSON.stringify(cashMethods));
+		})
+		.catch((error) => {
+			console.error("Error loading cash methods:", error);
+		});
+}
+
+// Load status requests for reference
+function loadStatusRequests() {
+	const formData = new FormData();
+	formData.append("operation", "statusRequest");
+
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+		.then((response) => {
+			const statusRequests = response.data;
+			// Store for later use
+			sessionStorage.setItem("statusRequests", JSON.stringify(statusRequests));
+		})
+		.catch((error) => {
+			console.error("Error loading status requests:", error);
+		});
+}
+
+let allRequests = [];
+
+// Load user's request history
+function loadRequestHistory() {
+	const user = JSON.parse(sessionStorage.getItem("user"));
+	if (!user) return;
+
+	const formData = new FormData();
+	formData.append("operation", "getRequestCash");
+	formData.append("json", JSON.stringify({ userId: user.user_id }));
+
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+		.then((response) => {
+			let requests = [];
+			if (response.data) {
+				if (typeof response.data === "string") {
+					try {
+						requests = JSON.parse(response.data);
+					} catch (e) {
+						console.error("Error parsing response data:", e);
+					}
+				} else {
+					requests = response.data;
+				}
+			}
+			if (!Array.isArray(requests)) {
+				requests = [];
+			}
+			allRequests = requests;
+			applyFiltersAndRender();
+			updateDashboardStats(requests);
+		})
+		.catch((error) => {
+			console.error("Error loading request history:", error);
+			const grid = document.getElementById("recentRequestsGrid");
+			grid.innerHTML = `<div class='col-span-full text-center text-red-500 py-6'>Error loading requests. Please try again later.</div>`;
+		});
+}
+
+// Populate the request table with data
+function populateRequestTable(requests) {
+	const grid = document.getElementById("recentRequestsGrid");
+	grid.innerHTML = "";
+
+	if (!Array.isArray(requests) || requests.length === 0) {
+		grid.innerHTML = `<div class='col-span-full text-center text-gray-500 dark:text-gray-400 py-6'>No requests found</div>`;
+		return;
+	}
+
+	requests.forEach((request) => {
+		if (
+			!request ||
+			request.req_id == null ||
+			request.reqS_datetime == null ||
+			request.req_purpose == null ||
+			request.req_budget == null ||
+			request.statusR_name == null
+		) {
+			console.warn("Invalid request data:", request);
+			return;
+		}
+
+		const date = new Date(request.reqS_datetime);
+		const formattedDate = date.toLocaleString("en-PH", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: true,
+			timeZone: "Asia/Manila",
+		});
+
+		// Status badge color
+		let statusClass = "";
+		switch ((request.statusR_name || "").toLowerCase()) {
+			case "pending":
+				statusClass = "bg-yellow-100 text-yellow-800";
+				break;
+			case "approved":
+				statusClass = "bg-green-100 text-green-800";
+				break;
+			case "rejected":
+				statusClass = "bg-red-100 text-red-800";
+				break;
+			default:
+				statusClass = "bg-gray-100 text-gray-800";
+		}
+
+		const card = document.createElement("div");
+		card.className =
+			"bg-gray-100/90 dark:bg-gray-700 rounded-lg shadow p-5 flex flex-col gap-2 border-t-4";
+		card.style.borderTopColor = "#8B1C23"; // sidebar primary color
+		card.innerHTML = `
+			<div class="flex justify-between items-center mb-1">
+				<span class="font-semibold text-lg darK:text-red-500 text-red-600">${
+					request.req_purpose
+				}</span>
+				<span class="px-3 py-1 rounded-full text-xs font-semibold ${statusClass}">${
+			request.statusR_name
+		}</span>
+			</div>
+			<div class="text-gray-500 dark:text-gray-300 text-sm mb-2">${
+				request.req_desc || ""
+			}</div>
+			<div class="flex justify-between items-end mt-auto">
+				<span class="text-xl font-bold text-green-700 dark:text-green-400">₱${Number(
+					request.req_budget
+				).toLocaleString()}</span>
+				<span class="text-xs text-gray-400">${formattedDate}</span>
+			</div>
+		`;
+		grid.appendChild(card);
+	});
+}
+
+// Update dashboard statistics
+function updateDashboardStats(requests) {
+	if (!requests) return;
+
+	// Count pending requests
+	const pendingCount = requests.filter(
+		(request) => request.statusR_name.toLowerCase() === "pending"
+	).length;
+
+	// Count approved requests
+	const approvedCount = requests.filter(
+		(request) => request.statusR_name.toLowerCase() === "approved"
+	).length;
+
+	// Calculate total advanced amount
+	const totalAdvanced = requests
+		.filter((request) => request.statusR_name.toLowerCase() === "approved")
+		.reduce((sum, request) => sum + Number(request.req_budget), 0);
+
+	// Update stats in DOM
+	const statsElements = document.querySelectorAll(
+		".bg-white.dark\\:bg-gray-800.rounded-lg.shadow.p-6 p.text-2xl"
+	);
+	if (statsElements[0]) statsElements[0].textContent = pendingCount;
+	if (statsElements[1]) statsElements[1].textContent = approvedCount;
+	if (statsElements[2])
+		statsElements[2].textContent = `₱${totalAdvanced.toLocaleString()}`;
+}
+
+// Open the request modal
+function openRequestModal() {
+	// Check if modal already exists
+	let modal = document.getElementById("requestModal");
+
+	if (!modal) {
+		// Create modal if it doesn't exist
+		modal = document.createElement("div");
+		modal.id = "requestModal";
+		modal.classList.add(
+			"fixed",
+			"inset-0",
+			"z-50",
+			"overflow-auto",
+			"bg-black",
+			"bg-opacity-50",
+			"flex",
+			"items-center",
+			"justify-center"
+		);
+
+		// Get cash methods from session storage
+		const cashMethods = JSON.parse(sessionStorage.getItem("cashMethods")) || [];
+
+		// Generate cash method options
+		const cashMethodOptions = cashMethods
+			.map(
+				(method) =>
+					`<option value="${method.cashM_id}">${method.cashM_name}</option>`
+			)
+			.join("");
+
+		modal.innerHTML = `
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full mx-4 overflow-hidden">
+                <div class="bg-primary p-4 text-white flex justify-between items-center">
+                    <h3 class="text-lg font-semibold">New Cash Advance Request</h3>
+                    <button id="closeModal" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="requestForm" class="p-6">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="purpose">
+                            Purpose
+                        </label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                            id="purpose" type="text" placeholder="Purpose of cash advance" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="desc">
+                            Description
+                        </label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                            id="desc" type="text" placeholder="Description (optional)">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="budget">
+                            Amount (₱)
+                        </label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                            id="budget" type="number" placeholder="Enter amount" min="1" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="cashMethodId">
+                            Cash Method
+                        </label>
+                        <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                            id="cashMethodId" required>
+                            <option value="">Select a cash method</option>
+                            ${cashMethodOptions}
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <button class="bg-primary hover:bg-secondary text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full" 
+                            type="submit">
+                            Submit Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+		document.body.appendChild(modal);
+
+		// Add event listeners for the modal
+		document
+			.getElementById("closeModal")
+			.addEventListener("click", closeRequestModal);
+		document
+			.getElementById("requestForm")
+			.addEventListener("submit", submitRequest);
+
+		// Close modal when clicking outside
+		modal.addEventListener("click", function (e) {
+			if (e.target === modal) {
+				closeRequestModal();
+			}
+		});
+	} else {
+		// Show existing modal
+		modal.classList.remove("hidden");
+	}
+}
+
+// Close the request modal
+function closeRequestModal() {
+	const modal = document.getElementById("requestModal");
+	if (modal) {
+		// Option 1: Remove the modal completely
+		modal.remove();
+
+		// Option 2: Hide the modal
+		// modal.classList.add('hidden');
+	}
+}
+
+// Submit the request form
+function submitRequest(e) {
+	e.preventDefault();
+
+	const user = JSON.parse(sessionStorage.getItem("user"));
+	if (!user) {
+		showToast("You must be logged in to submit a request", "error");
+		return;
+	}
+
+	const purpose = document.getElementById("purpose").value;
+	const desc = document.getElementById("desc").value;
+	const budget = document.getElementById("budget").value;
+	const cashMethodId = document.getElementById("cashMethodId").value;
+
+	// Validation
+	if (!purpose || !budget || !cashMethodId) {
+		showToast("All fields are required", "error");
+		return;
+	}
+
+	// Prepare request data
+	const now = new Date();
+	const phTime = new Date(
+		now.toLocaleString("en-US", { timeZone: "Asia/Manila" })
+	);
+	const pad = (n) => n.toString().padStart(2, "0");
+	const phDateTime = `${phTime.getFullYear()}-${pad(
+		phTime.getMonth() + 1
+	)}-${pad(phTime.getDate())} ${pad(phTime.getHours())}:${pad(
+		phTime.getMinutes()
+	)}:${pad(phTime.getSeconds())}`;
+	const requestData = {
+		userId: user.user_id,
+		purpose: purpose,
+		desc: desc,
+		budget: budget,
+		cashMethodId: cashMethodId,
+		datetime: phDateTime,
+	};
+
+	// Create form data
+	const formData = new FormData();
+	formData.append("operation", "addRequestCash");
+	formData.append("json", JSON.stringify(requestData));
+
+	// Show loading state
+	const submitButton = document.querySelector(
+		'#requestForm button[type="submit"]'
+	);
+	const originalText = submitButton.innerHTML;
+	submitButton.innerHTML =
+		'<i class="fas fa-spinner fa-spin"></i> Submitting...';
+	submitButton.disabled = true;
+
+	// Submit the request
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+		.then((response) => {
+			if (response.data.success) {
+				showToast("Request submitted successfully", "success");
+				closeRequestModal();
+				loadRequestHistory(); // Reload the requests
+			} else {
+				showToast(response.data.error || "Failed to submit request", "error");
+			}
+		})
+		.catch((error) => {
+			console.error("Error submitting request:", error);
+			showToast("An error occurred while submitting your request", "error");
+		})
+		.finally(() => {
+			// Reset button state
+			submitButton.innerHTML = originalText;
+			submitButton.disabled = false;
+		});
+}
+
+// Toast utility
+function showToast(message, type = "success") {
+	const toast = document.getElementById("toast");
+	toast.textContent = message;
+	toast.className =
+		"fixed bottom-6 right-6 z-50 min-w-[200px] max-w-xs rounded-lg shadow-lg px-6 py-4 flex items-center space-x-3 transition-all duration-300";
+	if (type === "success") {
+		toast.classList.add("bg-green-500", "text-white");
+	} else if (type === "error") {
+		toast.classList.add("bg-red-500", "text-white");
+	} else {
+		toast.classList.add("bg-gray-800", "text-white");
+	}
+	toast.classList.remove("hidden");
+	setTimeout(() => {
+		toast.classList.add("hidden");
+	}, 3000);
+}
+
+function applyFiltersAndRender() {
+	let filtered = [...allRequests];
+
+	// Date filter
+	const dateFilter = document.getElementById("dateFilter").value;
+	const today = new Date();
+	let start, end;
+
+	if (dateFilter === "today") {
+		start = new Date();
+		start.setHours(0, 0, 0, 0);
+		end = new Date();
+		end.setHours(23, 59, 59, 999);
+		filtered = filtered.filter((req) => {
+			const reqDate = new Date(req.reqS_datetime);
+			return reqDate >= start && reqDate <= end;
+		});
+	} else if (dateFilter === "week") {
+		const now = new Date();
+		const first = now.getDate() - now.getDay();
+		start = new Date(now.setDate(first));
+		start.setHours(0, 0, 0, 0);
+		end = new Date(now.setDate(first + 6));
+		end.setHours(23, 59, 59, 999);
+		filtered = filtered.filter((req) => {
+			const reqDate = new Date(req.reqS_datetime);
+			return reqDate >= start && reqDate <= end;
+		});
+	} else if (dateFilter === "month") {
+		start = new Date(today.getFullYear(), today.getMonth(), 1);
+		end = new Date(
+			today.getFullYear(),
+			today.getMonth() + 1,
+			0,
+			23,
+			59,
+			59,
+			999
+		);
+		filtered = filtered.filter((req) => {
+			const reqDate = new Date(req.reqS_datetime);
+			return reqDate >= start && reqDate <= end;
+		});
+	} else if (dateFilter === "custom") {
+		const startDate = document.getElementById("startDate").value;
+		const endDate = document.getElementById("endDate").value;
+		if (startDate && endDate) {
+			start = new Date(startDate + "T00:00:00");
+			end = new Date(endDate + "T23:59:59");
+			filtered = filtered.filter((req) => {
+				const reqDate = new Date(req.reqS_datetime);
+				return reqDate >= start && reqDate <= end;
+			});
+		}
+	}
+
+	// Search filter
+	const search = document
+		.getElementById("searchInput")
+		.value.trim()
+		.toLowerCase();
+	if (search) {
+		filtered = filtered.filter((req) => {
+			const purpose = req.req_purpose ? req.req_purpose.toLowerCase() : "";
+			const desc = req.req_desc ? req.req_desc.toLowerCase() : "";
+			const budget = req.req_budget ? req.req_budget.toString() : "";
+			const rawDate = req.reqS_datetime ? req.reqS_datetime.toLowerCase() : "";
+			const formattedDate = new Date(req.reqS_datetime)
+				.toLocaleString("en-PH", {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+					hour12: true,
+					timeZone: "Asia/Manila",
+				})
+				.toLowerCase();
+
+			return (
+				purpose.includes(search) ||
+				desc.includes(search) ||
+				budget.includes(search) ||
+				rawDate.includes(search) ||
+				formattedDate.includes(search)
+			);
+		});
+	}
+
+	populateRequestTable(filtered);
+	updateDashboardStats(filtered);
+}
