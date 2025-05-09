@@ -404,7 +404,7 @@
 			});
 
 			// Set user initials and name from sessionStorage
-			const user = JSON.parse(sessionStorage.getItem("user"));
+			const user = getSecureSession("user");
 			if (user) {
 				const initials =
 					(user.user_firstname[0] || "") + (user.user_lastname[0] || "");
