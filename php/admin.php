@@ -113,7 +113,24 @@ class Admin {
 
       $json = json_decode($json, true);
 
-      $sql = "UPDATE tbluser SET user_firstname = :firstname, user_lastname = :lastname, user_contactNumber = :contactNumber, user_address = :address, user_email = :email, user_username = :username, user_userLevel = :userLevel, user_status = :status WHERE user_id = :userId";
+      // Check if password is provided and not empty
+      $updatePassword = isset($json['password']) && !empty($json['password']);
+
+      $sql = "UPDATE tbluser SET 
+                user_firstname = :firstname, 
+                user_lastname = :lastname, 
+                user_contactNumber = :contactNumber, 
+                user_address = :address, 
+                user_email = :email, 
+                user_username = :username, 
+                user_userLevel = :userLevel, 
+                user_status = :status";
+
+      if ($updatePassword) {
+        $sql .= ", user_password = :password";
+      }
+
+      $sql .= " WHERE user_id = :userId";
 
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(':firstname', $json['firstname']);
@@ -125,6 +142,11 @@ class Admin {
       $stmt->bindParam(':userLevel', $json['userLevel']);
       $stmt->bindParam(':status', $json['status']);
       $stmt->bindParam(':userId', $json['userId']);
+
+      if ($updatePassword) {
+        $hashedPassword = password_hash($json['password'], PASSWORD_DEFAULT);
+        $stmt->bindParam(':password', $hashedPassword);
+      }
 
       if ($stmt->execute()) {
         return json_encode(['success' => true]);

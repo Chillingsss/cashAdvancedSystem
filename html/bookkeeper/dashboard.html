@@ -5,6 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Bookkeeper Dashboard - Construction Corp.</title>
 		<script src="https://cdn.tailwindcss.com"></script>
+		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+		<script src="../../js/bookkeeper/cashAdvance.js"></script>
 		<link
 			rel="stylesheet"
 			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -48,7 +50,7 @@
 						<li>
 							<a
 								href="#"
-								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+								class="flex items-center space-x-3 p-3 rounded-lg bg-secondary/80 text-white transition-colors group"
 							>
 								<i
 									class="fas fa-home group-hover:scale-110 transition-transform"
@@ -62,9 +64,9 @@
 								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
 							>
 								<i
-									class="fas fa-file-invoice-dollar group-hover:scale-110 transition-transform"
+									class="fas fa-hourglass-half group-hover:scale-110 transition-transform"
 								></i>
-								<span>Invoices</span>
+								<span>Pending Requests</span>
 							</a>
 						</li>
 						<li>
@@ -73,9 +75,20 @@
 								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
 							>
 								<i
-									class="fas fa-receipt group-hover:scale-110 transition-transform"
+									class="fas fa-check-circle group-hover:scale-110 transition-transform"
 								></i>
-								<span>Expenses</span>
+								<span>Approved Requests</span>
+							</a>
+						</li>
+						<li>
+							<a
+								href="#"
+								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+							>
+								<i
+									class="fas fa-users group-hover:scale-110 transition-transform"
+								></i>
+								<span>Employees</span>
 							</a>
 						</li>
 						<li>
@@ -87,6 +100,17 @@
 									class="fas fa-chart-bar group-hover:scale-110 transition-transform"
 								></i>
 								<span>Reports</span>
+							</a>
+						</li>
+						<li>
+							<a
+								href="#"
+								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
+							>
+								<i
+									class="fas fa-cog group-hover:scale-110 transition-transform"
+								></i>
+								<span>Settings</span>
 							</a>
 						</li>
 					</ul>
@@ -169,11 +193,18 @@
 							<div
 								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
 							>
-								<i class="fas fa-file-invoice text-2xl"></i>
+								<i class="fas fa-hourglass-half text-2xl"></i>
 							</div>
 							<div class="ml-4">
-								<h2 class="text-gray-600 text-sm">Pending Invoices</h2>
-								<p class="text-2xl font-semibold text-gray-800">12</p>
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Pending Requests
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="pendingRequestsCount"
+								>
+									0
+								</p>
 							</div>
 						</div>
 					</div>
@@ -182,11 +213,18 @@
 							<div
 								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
 							>
-								<i class="fas fa-money-bill-wave text-2xl"></i>
+								<i class="fas fa-check-circle text-2xl"></i>
 							</div>
 							<div class="ml-4">
-								<h2 class="text-gray-600 text-sm">Monthly Revenue</h2>
-								<p class="text-2xl font-semibold text-gray-800">$45,678</p>
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Approved Requests
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="approvedRequestsCount"
+								>
+									0
+								</p>
 							</div>
 						</div>
 					</div>
@@ -195,11 +233,18 @@
 							<div
 								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
 							>
-								<i class="fas fa-receipt text-2xl"></i>
+								<i class="fas fa-wallet text-2xl"></i>
 							</div>
 							<div class="ml-4">
-								<h2 class="text-gray-600 text-sm">Expenses</h2>
-								<p class="text-2xl font-semibold text-gray-800">$12,345</p>
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Total Advanced
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="totalAdvanced"
+								>
+									₱0
+								</p>
 							</div>
 						</div>
 					</div>
@@ -208,30 +253,85 @@
 							<div
 								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
 							>
-								<i class="fas fa-balance-scale text-2xl"></i>
+								<i class="fas fa-flag-checkered text-2xl"></i>
 							</div>
 							<div class="ml-4">
-								<h2 class="text-gray-600 text-sm">Balance</h2>
-								<p class="text-2xl font-semibold text-gray-800">$33,333</p>
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Completed
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="completedCount"
+								>
+									0
+								</p>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Welcome Message -->
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-					<h2
-						class="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4"
-					>
-						Welcome to Construction Corp.
-					</h2>
-					<p class="text-gray-600 dark:text-gray-300">
-						As the bookkeeper, you have access to all financial records,
-						invoices, and expense reports. Use the sidebar navigation to manage
-						financial transactions and generate reports.
-					</p>
+				<!-- Filter and Search -->
+				<div class="flex flex-col md:flex-row md:items-end gap-4 mb-6">
+					<!-- Date Filter -->
+					<div>
+						<label
+							class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+							>Filter by Date</label
+						>
+						<select
+							id="dateFilter"
+							class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 px-3 py-2"
+						>
+							<option value="all">All</option>
+							<option value="today">Today</option>
+							<option value="week">This Week</option>
+							<option value="month">This Month</option>
+							<option value="custom">Custom Range</option>
+						</select>
+					</div>
+					<div id="customDateRange" class="hidden flex gap-2">
+						<input
+							type="date"
+							id="startDate"
+							class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 px-2 py-1"
+						/>
+						<span class="self-center dark:text-gray-200">to</span>
+						<input
+							type="date"
+							id="endDate"
+							class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 px-2 py-1"
+						/>
+					</div>
+					<!-- Search -->
+					<div class="flex-1">
+						<label
+							class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+							>Search</label
+						>
+						<input
+							type="text"
+							id="searchInput"
+							placeholder="Search by name, purpose, description, or budget..."
+							class="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 px-3 py-2"
+						/>
+					</div>
 				</div>
+
+				<!-- Requests Cards Container -->
+				<div
+					id="bookkeeperRequestsContainer"
+					class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+				></div>
 			</main>
+		</div>
+
+		<!-- Toast Notification -->
+		<div
+			id="toast"
+			class="fixed bottom-6 right-6 z-50 min-w-[200px] max-w-xs rounded-lg shadow-lg px-6 py-4 flex items-center space-x-3 transition-all duration-300 hidden"
+		>
+			<i class="fas fa-check-circle"></i>
+			<span id="toastMessage"></span>
 		</div>
 
 		<script>

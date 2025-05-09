@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", function () {
 				// Store user data in sessionStorage
 				sessionStorage.setItem("user", JSON.stringify(data));
 
+				console.log("User Level:", data.user_userLevelDesc);
+				console.log("User Level Type:", typeof data.user_userLevelDesc);
+
 				// Redirect based on user level
 				switch (data.user_userLevelDesc) {
 					case "100.0": // Admin
@@ -36,14 +39,14 @@ document.addEventListener("DOMContentLoaded", function () {
 					case "50.0": // Owner
 						window.location.href = "owner/dashboard.html";
 						break;
-					case "0.0": // Bookkeeper
-						window.location.href = "bookeeper/dashboard.html";
+					case "20.0": // Bookkeeper
+						window.location.href = "bookkeeper/dashboard.html";
 						break;
 					case "10.0": // Employee
 						window.location.href = "employee/dashboard.html";
 						break;
 					default:
-						alert("Invalid user level");
+						console.log("Invalid user level");
 				}
 			} else {
 				alert("Invalid username or password");

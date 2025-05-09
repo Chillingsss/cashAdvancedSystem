@@ -1,7 +1,7 @@
 let allRequests = [];
 
 document.addEventListener("DOMContentLoaded", function () {
-	fetchAdminRequests();
+	fetchBookkeeperRequests();
 	// Filter and search event listeners
 	const dateFilter = document.getElementById("dateFilter");
 	const startDate = document.getElementById("startDate");
@@ -20,12 +20,12 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (searchInput) searchInput.addEventListener("input", applyFiltersAndRender);
 });
 
-function fetchAdminRequests() {
+function fetchBookkeeperRequests() {
 	const formData = new FormData();
 	formData.append("operation", "getRequestCash");
 
 	axios
-		.post("http://localhost/cashAdvancedSystem/php/admin.php", formData)
+		.post("http://localhost/cashAdvancedSystem/php/bookkeeper.php", formData)
 		.then((response) => {
 			let requests = response.data;
 			if (typeof requests === "string") {
@@ -129,12 +129,12 @@ function applyFiltersAndRender() {
 		});
 	}
 
-	renderAdminRequests(filtered);
+	renderBookkeeperRequests(filtered);
 	updateDashboardStats(filtered);
 }
 
-function renderAdminRequests(requests) {
-	const container = document.getElementById("adminRequestsContainer");
+function renderBookkeeperRequests(requests) {
+	const container = document.getElementById("bookkeeperRequestsContainer");
 	container.innerHTML = "";
 
 	if (!requests || requests.length === 0) {
@@ -145,6 +145,7 @@ function renderAdminRequests(requests) {
 	requests.forEach((req) => {
 		const statusColor = getStatusColor(req.statusR_name);
 		const isPending = req.statusR_name.toLowerCase() === "pending";
+		const isApproved = req.statusR_name.toLowerCase() === "approved";
 		const card = `
   <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6 flex flex-col gap-3 transition hover:shadow-lg">
     <div class="flex items-center justify-between mb-2">
@@ -166,13 +167,8 @@ function renderAdminRequests(requests) {
       <span>${formatDate(req.reqS_datetime)}</span>
     </div>
     ${
-			isPending
-				? `
-      <div class="flex gap-2 mt-4">
-        <button class="approve-btn flex-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition font-medium py-2 rounded-lg" data-id="${req.req_id}">Approve</button>
-        <button class="reject-btn flex-1 bg-red-50 text-red-700 border border-red-200 hover:bg-red-600 hover:text-white transition font-medium py-2 rounded-lg" data-id="${req.req_id}">Reject</button>
-      </div>
-      `
+			isApproved
+				? `<div class=\"flex gap-2 mt-4\"><button class=\"complete-btn flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white transition font-medium py-2 rounded-lg\" data-id=\"${req.req_id}\">Complete</button></div>`
 				: ""
 		}
   </div>
@@ -180,15 +176,10 @@ function renderAdminRequests(requests) {
 		container.innerHTML += card;
 	});
 
-	// Add event listeners for action buttons
-	document.querySelectorAll(".approve-btn").forEach((btn) => {
+	// Add event listeners for Complete buttons
+	document.querySelectorAll(".complete-btn").forEach((btn) => {
 		btn.addEventListener("click", function () {
-			handleRequestAction(this.dataset.id, "approve");
-		});
-	});
-	document.querySelectorAll(".reject-btn").forEach((btn) => {
-		btn.addEventListener("click", function () {
-			handleRequestAction(this.dataset.id, "reject");
+			handleRequestAction(this.dataset.id, "complete");
 		});
 	});
 }
@@ -254,42 +245,38 @@ function showToast(message, type = "success") {
 }
 
 function handleRequestAction(requestId, action) {
-	const operation = action === "approve" ? "approveRequest" : "rejectRequest";
+	let operation = "";
+	if (action === "complete") {
+		operation = "completeRequest";
+	} else {
+		return; // Only complete is supported for bookkeeper
+	}
 	const formData = new FormData();
 	formData.append("operation", operation);
 	formData.append("json", JSON.stringify({ req_id: requestId }));
 
-	// Optionally, disable buttons while processing
-	const approveBtn = document.querySelector(
-		`.approve-btn[data-id='${requestId}']`
+	const completeBtn = document.querySelector(
+		`.complete-btn[data-id='${requestId}']`
 	);
-	const rejectBtn = document.querySelector(
-		`.reject-btn[data-id='${requestId}']`
-	);
-	if (approveBtn) approveBtn.disabled = true;
-	if (rejectBtn) rejectBtn.disabled = true;
+	if (completeBtn) completeBtn.disabled = true;
 
 	axios
-		.post("http://localhost/cashAdvancedSystem/php/admin.php", formData)
+		.post("http://localhost/cashAdvancedSystem/php/bookkeeper.php", formData)
 		.then((response) => {
 			if (response.data && response.data.success) {
-				showToast(
-					action === "approve"
-						? "Request approved successfully!"
-						: "Request rejected successfully!",
-					"success"
-				);
-				fetchAdminRequests(); // Refresh the list and stats
+				showToast("Request completed successfully!", "success");
+				fetchBookkeeperRequests();
 			} else {
-				showToast(response.data.error || "Failed to process request.", "error");
-				if (approveBtn) approveBtn.disabled = false;
-				if (rejectBtn) rejectBtn.disabled = false;
+				showToast(
+					response.data.error || "Failed to complete request.",
+					"error"
+				);
+				if (completeBtn) completeBtn.disabled = false;
 			}
 		})
 		.catch((error) => {
 			showToast("An error occurred. Please try again.", "error");
-			if (approveBtn) approveBtn.disabled = false;
-			if (rejectBtn) rejectBtn.disabled = false;
+			if (completeBtn) completeBtn.disabled = false;
 		});
 }
 

@@ -178,7 +178,7 @@ async function fetchUserLevels(afterLoadCallback) {
 		if (afterLoadCallback) afterLoadCallback();
 	} catch (error) {
 		console.error("Error fetching user levels:", error);
-		alert("Error loading user levels. Please try again.");
+		showToast("Error loading user levels. Please try again.", "error");
 	}
 }
 
@@ -308,10 +308,11 @@ async function handleAddUser(event) {
 		);
 
 		if (response.data.success) {
-			alert(
+			showToast(
 				editingUserId
 					? "User updated successfully!"
-					: "User added successfully!"
+					: "User added successfully!",
+				"success"
 			);
 			hideAddUserModal();
 			fetchUsers(); // Refresh the users list
@@ -322,7 +323,7 @@ async function handleAddUser(event) {
 		}
 	} catch (error) {
 		console.error("Error saving user:", error);
-		showModalError("Error saving user. Please try again.");
+		showToast("Error saving user. Please try again.", "error");
 	} finally {
 		editingUserId = null;
 		document.getElementById("submitUserBtn").textContent = "Add User";
@@ -351,3 +352,37 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	});
 });
+
+function showToast(message, type = "success") {
+	const toast = document.getElementById("toast");
+	const toastMessage = document.getElementById("toastMessage");
+	const icon = toast.querySelector("i");
+
+	// Set message
+	toastMessage.textContent = message;
+
+	// Reset classes
+	toast.className =
+		"fixed bottom-6 right-6 z-50 min-w-[200px] max-w-xs rounded-lg shadow-lg px-6 py-4 flex items-center space-x-3 transition-all duration-300";
+	icon.className = "fas";
+
+	// Set type-specific styles
+	if (type === "success") {
+		toast.classList.add("bg-green-500", "text-white");
+		icon.classList.add("fa-check-circle");
+	} else if (type === "error") {
+		toast.classList.add("bg-red-500", "text-white");
+		icon.classList.add("fa-exclamation-circle");
+	} else {
+		toast.classList.add("bg-gray-800", "text-white");
+		icon.classList.add("fa-info-circle");
+	}
+
+	// Show toast
+	toast.classList.remove("hidden");
+
+	// Hide after 3 seconds
+	setTimeout(() => {
+		toast.classList.add("hidden");
+	}, 3000);
+}
