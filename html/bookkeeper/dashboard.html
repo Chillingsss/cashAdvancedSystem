@@ -448,7 +448,7 @@
 			document
 				.getElementById("logoutBtn")
 				.addEventListener("click", function () {
-					sessionStorage.clear();
+					clearSecureSession("user");
 					window.location.href = "../login.html";
 				});
 		</script>

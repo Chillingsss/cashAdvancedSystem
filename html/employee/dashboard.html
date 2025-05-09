@@ -33,6 +33,17 @@
 					left: 16rem !important; /* 64 * 0.25rem = 16rem (Tailwind's w-64) */
 				}
 			}
+			@media (max-width: 1023px) {
+				#sidebar {
+					z-index: 60 !important;
+				}
+				#topNav {
+					z-index: 50 !important;
+				}
+				body.sidebar-open #topNav {
+					display: none;
+				}
+			}
 		</style>
 	</head>
 	<body

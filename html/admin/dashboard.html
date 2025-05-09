@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Admin Dashboard - Cash Advance System</title>
+		<title>Admin Dashboard</title>
 		<script src="https://cdn.tailwindcss.com"></script>
 		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 		<script src="../../js/crypto.js"></script>
@@ -31,6 +31,17 @@
 			@media (min-width: 1024px) {
 				nav.with-sidebar {
 					left: 16rem !important; /* 64 * 0.25rem = 16rem (Tailwind's w-64) */
+				}
+			}
+			@media (max-width: 1023px) {
+				#sidebar {
+					z-index: 60 !important;
+				}
+				#topNav {
+					z-index: 50 !important;	
+				}
+				body.sidebar-open #topNav {
+					display: none;
 				}
 			}
 		</style>
@@ -153,7 +164,7 @@
 							<h1
 								class="ml-2 text-xl font-semibold text-gray-800 dark:text-gray-100"
 							>
-								Admin Dashboard - Cash Advance System
+								Admin Dashboard
 							</h1>
 						</div>
 						<div class="flex items-center space-x-4">
@@ -483,7 +494,7 @@
 			document
 				.getElementById("logoutBtn")
 				.addEventListener("click", function () {
-					sessionStorage.clear();
+					clearSecureSession("user");
 					window.location.href = "../login.html";
 				});
 		</script>
