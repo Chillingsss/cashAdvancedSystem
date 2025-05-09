@@ -1,8 +1,5 @@
 // request.js - Handles cash advance request functionality for employees
 document.addEventListener("DOMContentLoaded", function () {
-	// Get user data from session storage
-	const user = JSON.parse(sessionStorage.getItem("user"));
-
 	// Load cash methods for dropdown
 	loadCashMethods();
 
@@ -45,7 +42,7 @@ function loadCashMethods() {
 		.then((response) => {
 			const cashMethods = response.data;
 			// Store for later use in the modal
-			sessionStorage.setItem("cashMethods", JSON.stringify(cashMethods));
+			setSecureSession("cashMethods", cashMethods);
 		})
 		.catch((error) => {
 			console.error("Error loading cash methods:", error);
@@ -62,7 +59,7 @@ function loadStatusRequests() {
 		.then((response) => {
 			const statusRequests = response.data;
 			// Store for later use
-			sessionStorage.setItem("statusRequests", JSON.stringify(statusRequests));
+			setSecureSession("statusRequests", statusRequests);
 		})
 		.catch((error) => {
 			console.error("Error loading status requests:", error);
@@ -73,8 +70,11 @@ let allRequests = [];
 
 // Load user's request history
 function loadRequestHistory() {
-	const user = JSON.parse(sessionStorage.getItem("user"));
-	if (!user) return;
+	const user = getSecureSession("user");
+	if (!user) {
+		console.error("No user data found in session");
+		return;
+	}
 
 	const formData = new FormData();
 	formData.append("operation", "getRequestCash");
@@ -85,19 +85,30 @@ function loadRequestHistory() {
 		.then((response) => {
 			let requests = [];
 			if (response.data) {
+				// Handle both string and object responses
 				if (typeof response.data === "string") {
 					try {
-						requests = JSON.parse(response.data);
-					} catch (e) {
-						console.error("Error parsing response data:", e);
+						const decryptedData = decryptData(response.data);
+						if (decryptedData) {
+							requests =
+								typeof decryptedData === "string"
+									? JSON.parse(decryptedData)
+									: decryptedData;
+						}
+					} catch (error) {
+						console.error("Error processing encrypted response data:", error);
 					}
 				} else {
 					requests = response.data;
 				}
 			}
+
+			// Ensure requests is an array
 			if (!Array.isArray(requests)) {
+				console.warn("Requests data is not an array:", requests);
 				requests = [];
 			}
+
 			allRequests = requests;
 			applyFiltersAndRender();
 			updateDashboardStats(requests);
@@ -105,7 +116,9 @@ function loadRequestHistory() {
 		.catch((error) => {
 			console.error("Error loading request history:", error);
 			const grid = document.getElementById("recentRequestsGrid");
-			grid.innerHTML = `<div class='col-span-full text-center text-red-500 py-6'>Error loading requests. Please try again later.</div>`;
+			if (grid) {
+				grid.innerHTML = `<div class='col-span-full text-center text-red-500 py-6'>Error loading requests. Please try again later.</div>`;
+			}
 		});
 }
 
@@ -200,19 +213,28 @@ function updateDashboardStats(requests) {
 		(request) => request.statusR_name.toLowerCase() === "approved"
 	).length;
 
-	// Calculate total advanced amount
+	// Count completed requests
+	const completedCount = requests.filter(
+		(request) => request.statusR_name.toLowerCase() === "completed"
+	).length;
+
+	// Calculate total advanced amount (approved + completed)
 	const totalAdvanced = requests
-		.filter((request) => request.statusR_name.toLowerCase() === "approved")
+		.filter((request) =>
+			["completed"].includes(request.statusR_name.toLowerCase())
+		)
 		.reduce((sum, request) => sum + Number(request.req_budget), 0);
 
-	// Update stats in DOM
-	const statsElements = document.querySelectorAll(
-		".bg-white.dark\\:bg-gray-800.rounded-lg.shadow.p-6 p.text-2xl"
-	);
-	if (statsElements[0]) statsElements[0].textContent = pendingCount;
-	if (statsElements[1]) statsElements[1].textContent = approvedCount;
-	if (statsElements[2])
-		statsElements[2].textContent = `₱${totalAdvanced.toLocaleString()}`;
+	// Update stats in DOM using IDs
+	const pendingElem = document.getElementById("pendingRequestsCount");
+	const approvedElem = document.getElementById("approvedRequestsCount");
+	const totalElem = document.getElementById("totalAdvanced");
+	const completedElem = document.getElementById("completedCount");
+
+	if (pendingElem) pendingElem.textContent = pendingCount;
+	if (approvedElem) approvedElem.textContent = approvedCount;
+	if (totalElem) totalElem.textContent = `₱${totalAdvanced.toLocaleString()}`;
+	if (completedElem) completedElem.textContent = completedCount;
 }
 
 // Open the request modal
@@ -237,7 +259,7 @@ function openRequestModal() {
 		);
 
 		// Get cash methods from session storage
-		const cashMethods = JSON.parse(sessionStorage.getItem("cashMethods")) || [];
+		const cashMethods = getSecureSession("cashMethods") || [];
 
 		// Generate cash method options
 		const cashMethodOptions = cashMethods
@@ -335,7 +357,7 @@ function closeRequestModal() {
 function submitRequest(e) {
 	e.preventDefault();
 
-	const user = JSON.parse(sessionStorage.getItem("user"));
+	const user = getSecureSession("user");
 	if (!user) {
 		showToast("You must be logged in to submit a request", "error");
 		return;

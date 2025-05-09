@@ -25,8 +25,8 @@ document.addEventListener("DOMContentLoaded", function () {
 			const data = response.data;
 
 			if (data) {
-				// Store user data in sessionStorage
-				sessionStorage.setItem("user", JSON.stringify(data));
+				// Store encrypted user data in sessionStorage
+				setSecureSession("user", data);
 
 				console.log("User Level:", data.user_userLevelDesc);
 				console.log("User Level Type:", typeof data.user_userLevelDesc);

@@ -11,6 +11,9 @@
 		/>
 		<!-- Add Axios -->
 		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+		<script src="../../js/crypto.js"></script>
+		<script src="../../js/auth.js"></script>
+		<script src="../../js/employee/request.js"></script>
 		<script>
 			tailwind.config = {
 				darkMode: "class",
@@ -189,6 +192,7 @@
 								</h2>
 								<p
 									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="pendingRequestsCount"
 								>
 									0
 								</p>
@@ -208,6 +212,7 @@
 								</h2>
 								<p
 									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="approvedRequestsCount"
 								>
 									0
 								</p>
@@ -227,6 +232,7 @@
 								</h2>
 								<p
 									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="totalAdvanced"
 								>
 									₱0
 								</p>
@@ -238,16 +244,17 @@
 							<div
 								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
 							>
-								<i class="fas fa-hand-holding-usd text-2xl"></i>
+								<i class="fas fa-flag-checkered text-2xl"></i>
 							</div>
 							<div class="ml-4">
 								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
-									Available Limit
+									Completed
 								</h2>
 								<p
 									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="completedCount"
 								>
-									₱25,000
+									0
 								</p>
 							</div>
 						</div>
@@ -417,7 +424,7 @@
 			});
 
 			// Set user initials and name from sessionStorage
-			const user = JSON.parse(sessionStorage.getItem("user"));
+			const user = getSecureSession("user");
 			if (user) {
 				const initials =
 					(user.user_firstname[0] || "") + (user.user_lastname[0] || "");
@@ -461,11 +468,9 @@
 			document
 				.getElementById("logoutBtn")
 				.addEventListener("click", function () {
-					sessionStorage.clear();
+					clearSecureSession("user");
 					window.location.href = "../login.html";
 				});
 		</script>
-		<!-- Add request.js -->
-		<script src="../../js/employee/request.js"></script>
 	</body>
 </html>
