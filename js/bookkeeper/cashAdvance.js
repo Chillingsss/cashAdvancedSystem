@@ -288,13 +288,12 @@ function updateDashboardStats(requests) {
 	requests.forEach((req) => {
 		const status = req.statusR_name.toLowerCase();
 		if (status === "pending") pending++;
-		if (status === "approved") {
-			approved++;
-			totalAdvanced += Number(req.req_budget);
-		}
 		if (status === "completed") {
 			completed++;
 			totalAdvanced += Number(req.req_budget);
+		}
+		if (status === "approved") {
+			approved++;
 		}
 	});
 	document.getElementById("pendingRequestsCount").textContent = pending;

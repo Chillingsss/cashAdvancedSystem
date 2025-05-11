@@ -3,8 +3,6 @@ let editingUserId = null;
 // Function to fetch and display users
 async function fetchUsers() {
 	try {
-		console.log("Sending request to fetch users...");
-
 		// Create FormData object
 		const formData = new FormData();
 		formData.append("operation", "getUsers");
@@ -13,10 +11,6 @@ async function fetchUsers() {
 			formData
 		);
 
-		console.log("Response status:", response.status);
-		console.log("Response headers:", response.headers);
-		console.log("Raw response:", response.data);
-
 		// Check if response.data is already an object
 		let users;
 		if (typeof response.data === "string") {
@@ -24,14 +18,11 @@ async function fetchUsers() {
 				users = JSON.parse(response.data);
 			} catch (parseError) {
 				console.error("Error parsing JSON:", parseError);
-				console.error("Invalid JSON string:", response.data);
-				throw new Error("Invalid JSON response from server");
 			}
 		} else {
 			users = response.data;
 		}
 
-		console.log("Parsed users:", users);
 		window.currentUsers = users; // Store globally for editUser
 
 		if (users && Array.isArray(users)) {
@@ -47,7 +38,6 @@ async function fetchUsers() {
                 </tr>
             `;
 		} else {
-			console.log("No users found or invalid data format");
 			const tbody = document.querySelector("tbody");
 			tbody.innerHTML = `
                 <tr>
@@ -59,8 +49,6 @@ async function fetchUsers() {
 		}
 	} catch (error) {
 		console.error("Error fetching users:", error);
-		console.error("Error response:", error.response);
-		console.error("Error details:", error.response?.data);
 		const tbody = document.querySelector("tbody");
 		tbody.innerHTML = `
             <tr>
@@ -119,7 +107,7 @@ function displayUsers(users) {
 												? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
 												: "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100"
 										}">
-                        ${user.user_status == 1 ? "Active" : "Inactive"}
+                        ${user.user_status == 1 ? "Active" : "Suspended"}
                     </span>
                 </td>
                 <td class="px-5 py-4 whitespace-nowrap align-middle">
@@ -225,27 +213,82 @@ function editUser(userId) {
 }
 
 // Function to handle user deletion
-function deleteUser(userId) {
+async function deleteUser(userId) {
 	// TODO: Implement delete user functionality
-	console.log("Delete user:", userId);
+	// console.log("Delete user:", userId);
+	if (
+		confirm(
+			"Are you sure you want to delete this user? This action cannot be undone."
+		)
+	) {
+		try {
+			const requestData = new FormData();
+			requestData.append("operation", "deleteUser");
+			requestData.append("json", JSON.stringify({ userId: userId }));
+
+			const response = await axios.post(
+				"http://localhost/cashAdvancedSystem/php/admin.php",
+				requestData
+			);
+
+			if (response.data.success) {
+				showToast("User deleted successfully!", "success");
+				fetchUsers(); // Refresh the users list
+			} else {
+				showToast(
+					response.data.error || "Error deleting user. Please try again.",
+					"error"
+				);
+			}
+		} catch (error) {
+			console.error("Error deleting user:", error);
+			showToast("An unexpected error occurred. Please try again.", "error");
+		}
+	}
 }
 
 // Function to show the add user modal (now also used for editing)
 function showAddUserModal(isEdit) {
 	const modal = document.getElementById("addUserModal");
+	const passwordInput = document.getElementById("password");
+	const passwordHelperText = document.getElementById("passwordHelperText");
+
 	modal.classList.remove("hidden");
 	modal.classList.add("flex");
-	if (!isEdit) fetchUserLevels(); // Only fetch if not editing (editUser handles it)
-	if (!editingUserId) setModalTitle(false);
+
+	if (isEdit) {
+		setModalTitle(true);
+		fetchUserLevels(() => {
+			// Populate userL_id for editing, this part is already in your editUser function
+		});
+		passwordInput.required = false;
+		passwordHelperText.classList.remove("hidden");
+	} else {
+		setModalTitle(false);
+		fetchUserLevels(); // Fetch for new user
+		document.getElementById("addUserForm").reset(); // Ensure form is clean for add
+		document.getElementById("userId").value = ""; // Ensure userId is cleared
+		passwordInput.required = true;
+		passwordHelperText.classList.add("hidden");
+		editingUserId = null; // Ensure editingUserId is null for add mode
+	}
 }
 
 // Function to hide the add user modal
 function hideAddUserModal() {
 	const modal = document.getElementById("addUserModal");
+	const passwordInput = document.getElementById("password");
+	const passwordHelperText = document.getElementById("passwordHelperText");
+
 	modal.classList.add("hidden");
 	modal.classList.remove("flex");
 	document.getElementById("addUserForm").reset();
 	document.getElementById("userId").value = "";
+
+	// Reset password field to be required and helper text hidden for next potential "Add User" action
+	passwordInput.required = true;
+	passwordHelperText.classList.add("hidden");
+
 	document.getElementById("submitUserBtn").textContent = "Add User";
 	setModalTitle(false);
 	editingUserId = null;

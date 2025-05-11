@@ -509,20 +509,20 @@ function renderTopWorkers(yearRequests) {
 					backgroundColor: "#22C55E",
 					barPercentage: 0.7,
 					categoryPercentage: 0.6,
-					yAxisID: "y1",
+					yAxisID: "y1", // Assign to secondary y-axis for vertical chart
 				},
 			],
 		},
 		options: {
 			maintainAspectRatio: false,
 			responsive: true,
-			indexAxis: "y", // Horizontal bars
 			plugins: {
 				legend: { position: "top" },
 				tooltip: {
 					callbacks: {
 						label: function (context) {
-							if (context.datasetIndex === 1) {
+							// Check if using secondary y-axis
+							if (context.dataset.yAxisID === "y1") {
 								return `${
 									context.dataset.label
 								}: ₱${context.raw.toLocaleString()}`;
@@ -533,12 +533,38 @@ function renderTopWorkers(yearRequests) {
 				},
 			},
 			scales: {
-				x: { beginAtZero: true },
-				y: { beginAtZero: true },
-				y1: {
+				x: {
+					// X-axis is now the category axis (Worker Names)
+					title: {
+						display: true,
+						text: "Top Workers",
+					},
+				},
+				y: {
+					// Primary Y-axis (for Total Requests)
+					position: "left",
 					beginAtZero: true,
+					title: {
+						display: true,
+						text: "Number of Requests",
+					},
+					ticks: {
+						stepSize: 1,
+						precision: 0,
+					},
+				},
+				y1: {
+					// Secondary Y-axis (for Disbursed ₱)
+					type: "linear",
 					position: "right",
-					grid: { drawOnChartArea: false },
+					beginAtZero: true,
+					title: {
+						display: true,
+						text: "Disbursed (₱)",
+					},
+					grid: {
+						drawOnChartArea: false, // Don't draw grid lines for this axis on the chart area
+					},
 				},
 			},
 		},

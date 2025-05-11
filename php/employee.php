@@ -44,15 +44,17 @@ class Employee {
     
     try {
       // Get the user's base available limit
-      $sql = "SELECT user_availableLimit as available_limit FROM tbluser WHERE user_id = :userId";
+      $sql = "SELECT user_availableLimit as available_limit, user_status FROM tbluser WHERE user_id = :userId";
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(':userId', $data['userId']);
       $stmt->execute();
       
       $baseLimit = 0;
+      $userStatus = null; // Initialize userStatus
       if ($stmt->rowCount() > 0) {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $baseLimit = floatval($result['available_limit']);
+        $userStatus = $result['user_status']; // Fetch user_status
       }
 
       // Get the sum of all completed transactions
@@ -81,7 +83,8 @@ class Employee {
       return json_encode([
         'available_limit' => $remainingLimit,
         'base_limit' => $baseLimit,
-        'total_completed' => $totalCompleted
+        'total_completed' => $totalCompleted,
+        'user_status' => $userStatus // Include user_status in the response
       ]);
       
     } catch (PDOException $e) {
@@ -204,6 +207,39 @@ class Employee {
         return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
     }
   }
+
+  function getRequestStatusHistory($json)
+  {
+    include "connection.php";
+    $data = json_decode($json, true);
+    if (!isset($data['requestId']) || !isset($data['userId'])) {
+        return json_encode(['error' => 'Request ID and User ID are required']);
+    }
+
+    try {
+        $sql = "SELECT 
+                    b.reqS_id,
+                    b.reqS_reqId,
+                    b.reqS_statusId,
+                    b.reqS_datetime,
+                    c.statusR_name
+                FROM tblrequeststatus b
+                INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                INNER JOIN tblrequest r ON b.reqS_reqId = r.req_id
+                WHERE b.reqS_reqId = :requestId AND r.req_userId = :userId
+                ORDER BY b.reqS_datetime ASC";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':requestId', $data['requestId']);
+        $stmt->bindParam(':userId', $data['userId']);
+        $stmt->execute();
+
+        $statusHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return json_encode($statusHistory);
+
+    } catch (PDOException $e) {
+        return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
 }
 
 $operation = isset($_POST["operation"]) ? $_POST["operation"] : "0";
@@ -226,6 +262,9 @@ switch ($operation) {
     break;
   case "getUserAvailableLimit":
     echo $employee->getUserAvailableLimit($json);
+    break;
+  case "getRequestStatusHistory":
+    echo $employee->getRequestStatusHistory($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

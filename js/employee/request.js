@@ -144,6 +144,10 @@ function loadUserAvailableLimit() {
 				const availableLimit = Number(response.data.available_limit);
 				const baseLimit = Number(response.data.base_limit);
 				const totalCompleted = Number(response.data.total_completed);
+				const userStatus = response.data.user_status; // Get user_status
+
+				// Store user status in session for broader use
+				setSecureSession("userStatus", userStatus);
 
 				// Format numbers with 2 decimal places
 				const formatCurrency = (amount) => {
@@ -163,6 +167,25 @@ function loadUserAvailableLimit() {
 
 				// Store the limit for validation
 				setSecureSession("availableLimit", availableLimit);
+
+				// Disable/Enable New Request button based on status
+				const newRequestButton = document.getElementById("newRequestBtn");
+				if (newRequestButton) {
+					if (userStatus === "0" || userStatus === 0) {
+						// Assuming '0' means Suspended/Disabled
+						newRequestButton.disabled = true;
+						newRequestButton.classList.add("opacity-50", "cursor-not-allowed");
+						newRequestButton.title =
+							"Your account is currently suspended from making new requests.";
+					} else {
+						newRequestButton.disabled = false;
+						newRequestButton.classList.remove(
+							"opacity-50",
+							"cursor-not-allowed"
+						);
+						newRequestButton.title = "";
+					}
+				}
 			}
 		})
 		.catch((error) => {
@@ -287,6 +310,17 @@ function updateDashboardStats(requests) {
 
 // Open the request modal
 function openRequestModal() {
+	// Check user status before opening modal
+	const userStatus = getSecureSession("userStatus");
+	if (userStatus === "0" || userStatus === 0) {
+		// Assuming '0' means Suspended/Disabled
+		showToast(
+			"Your account is currently suspended. You cannot make new requests. Please contact an administrator.",
+			"error"
+		);
+		return;
+	}
+
 	// Check if modal already exists
 	let modal = document.getElementById("requestModal");
 

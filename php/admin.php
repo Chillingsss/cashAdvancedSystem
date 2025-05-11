@@ -373,6 +373,36 @@ class Admin {
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     return json_encode(['total_budgeted' => floatval($result['total_budgeted'] ?? 0)]);
   }
+
+  function deleteUserById($json)
+  {
+    try {
+      include "connection.php";
+      $data = json_decode($json, true);
+      $userId = $data['userId'];
+
+      $sql = "DELETE FROM tbluser WHERE user_id = :userId";
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':userId', $userId);
+
+      if ($stmt->execute()) {
+        if ($stmt->rowCount() > 0) {
+          return json_encode(['success' => true, 'message' => 'User deleted successfully.']);
+        } else {
+          return json_encode(['error' => 'User not found or already deleted.']);
+        }
+      } else {
+        return json_encode(['error' => 'Failed to delete user.']);
+      }
+    } catch (PDOException $e) {
+      error_log("Database error in deleteUserById: " . $e->getMessage());
+      // Check for foreign key constraint violation
+      if ($e->getCode() == '23000') {
+          return json_encode(['error' => 'Cannot delete user. They may have existing records (e.g., requests). Please reassign or remove those records first.']);
+      }
+      return json_encode(['error' => 'Database error occurred while deleting user.']);
+    }
+  }
 }
 
 $operation = isset($_POST["operation"]) ? $_POST["operation"] : "0";
@@ -419,6 +449,9 @@ switch ($operation) {
     break;
   case "getTotalBudgeted":
     echo $admin->getTotalBudgeted();
+    break;
+  case "deleteUser":
+    echo $admin->deleteUserById($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);
