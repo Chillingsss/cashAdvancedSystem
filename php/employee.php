@@ -33,6 +33,62 @@ class Employee {
     return json_encode([]);
   }
 
+  function getUserAvailableLimit($json)
+  {
+    include "connection.php";
+    
+    $data = json_decode($json, true);
+    if (!isset($data['userId'])) {
+      return json_encode(['error' => 'User ID is required']);
+    }
+    
+    try {
+      // Get the user's base available limit
+      $sql = "SELECT user_availableLimit as available_limit FROM tbluser WHERE user_id = :userId";
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':userId', $data['userId']);
+      $stmt->execute();
+      
+      $baseLimit = 0;
+      if ($stmt->rowCount() > 0) {
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $baseLimit = floatval($result['available_limit']);
+      }
+
+      // Get the sum of all completed transactions
+      $completedSql = "SELECT SUM(a.req_budget) as total_completed
+                      FROM tblrequest a
+                      INNER JOIN (
+                          SELECT reqS_reqId, MAX(reqS_id) as max_reqS_id
+                          FROM tblrequeststatus
+                          GROUP BY reqS_reqId
+                      ) latest_status ON a.req_id = latest_status.reqS_reqId
+                      INNER JOIN tblrequeststatus b ON b.reqS_id = latest_status.max_reqS_id
+                      INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                      WHERE a.req_userId = :userId 
+                      AND c.statusR_name = 'Completed'";
+      
+      $completedStmt = $conn->prepare($completedSql);
+      $completedStmt->bindParam(':userId', $data['userId']);
+      $completedStmt->execute();
+      
+      $completedResult = $completedStmt->fetch(PDO::FETCH_ASSOC);
+      $totalCompleted = floatval($completedResult['total_completed'] ?? 0);
+
+      // Calculate remaining limit
+      $remainingLimit = $baseLimit - $totalCompleted;
+      
+      return json_encode([
+        'available_limit' => $remainingLimit,
+        'base_limit' => $baseLimit,
+        'total_completed' => $totalCompleted
+      ]);
+      
+    } catch (PDOException $e) {
+      return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
+
   function addRequestCash($json)
   {
     include "connection.php";
@@ -53,6 +109,22 @@ class Employee {
       }
 
       $pendingStatusId = $statusResult['statusR_id'];
+
+      // Check if the request amount is within the available limit
+      $limitSql = "SELECT user_availableLimit FROM tbluser WHERE user_id = :userId";
+      $limitStmt = $conn->prepare($limitSql);
+      $limitStmt->bindParam(':userId', $json['userId']);
+      $limitStmt->execute();
+      
+      $availableLimit = 0;
+      if ($limitStmt->rowCount() > 0) {
+        $limitResult = $limitStmt->fetch(PDO::FETCH_ASSOC);
+        $availableLimit = $limitResult['user_availableLimit'];
+      }
+      
+      if ($json['budget'] > $availableLimit) {
+        return json_encode(['error' => 'Request amount exceeds your available limit of ₱' . number_format($availableLimit, 2)]);
+      }
 
       $sql = "INSERT INTO tblrequest (req_userId, req_purpose, req_desc, req_budget, req_cashMethodId, req_datetime ) 
               VALUES (:userId, :purpose, :desc, :budget, :cashMethodId, :datetime)";
@@ -151,6 +223,9 @@ switch ($operation) {
     break;
   case "getRequestCash":
     echo $employee->getRequestCash($json);
+    break;
+  case "getUserAvailableLimit":
+    echo $employee->getUserAvailableLimit($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

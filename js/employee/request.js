@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	// Load user's request history
 	loadRequestHistory();
 
+	// Load user's available limit
+	loadUserAvailableLimit();
+
 	// Filter and search event listeners
 	const dateFilter = document.getElementById("dateFilter");
 	const startDate = document.getElementById("startDate");
@@ -119,6 +122,51 @@ function loadRequestHistory() {
 			if (grid) {
 				grid.innerHTML = `<div class='col-span-full text-center text-red-500 py-6'>Error loading requests. Please try again later.</div>`;
 			}
+		});
+}
+
+// Load user's available limit
+function loadUserAvailableLimit() {
+	const user = getSecureSession("user");
+	if (!user) {
+		console.error("No user data found in session");
+		return;
+	}
+
+	const formData = new FormData();
+	formData.append("operation", "getUserAvailableLimit");
+	formData.append("json", JSON.stringify({ userId: user.user_id }));
+
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+		.then((response) => {
+			if (response.data && response.data.available_limit !== undefined) {
+				const availableLimit = Number(response.data.available_limit);
+				const baseLimit = Number(response.data.base_limit);
+				const totalCompleted = Number(response.data.total_completed);
+
+				// Format numbers with 2 decimal places
+				const formatCurrency = (amount) => {
+					return `₱${amount.toLocaleString(undefined, {
+						minimumFractionDigits: 2,
+						maximumFractionDigits: 2,
+					})}`;
+				};
+
+				// Update the display
+				document.getElementById("availableLimit").textContent =
+					formatCurrency(availableLimit);
+				document.getElementById("baseLimit").textContent =
+					formatCurrency(baseLimit);
+				document.getElementById("totalCompleted").textContent =
+					formatCurrency(totalCompleted);
+
+				// Store the limit for validation
+				setSecureSession("availableLimit", availableLimit);
+			}
+		})
+		.catch((error) => {
+			console.error("Error loading available limit:", error);
 		});
 }
 
@@ -365,12 +413,27 @@ function submitRequest(e) {
 
 	const purpose = document.getElementById("purpose").value;
 	const desc = document.getElementById("desc").value;
-	const budget = document.getElementById("budget").value;
+	const budget = Number(document.getElementById("budget").value);
 	const cashMethodId = document.getElementById("cashMethodId").value;
+
+	// Get available limit from session
+	const availableLimit = Number(getSecureSession("availableLimit") || 0);
 
 	// Validation
 	if (!purpose || !budget || !cashMethodId) {
 		showToast("All fields are required", "error");
+		return;
+	}
+
+	// Validate budget against available limit
+	if (budget > availableLimit) {
+		showToast(
+			`Request amount exceeds your available limit of ₱${availableLimit.toLocaleString(
+				undefined,
+				{ minimumFractionDigits: 2, maximumFractionDigits: 2 }
+			)}`,
+			"error"
+		);
 		return;
 	}
 
@@ -416,6 +479,7 @@ function submitRequest(e) {
 				showToast("Request submitted successfully", "success");
 				closeRequestModal();
 				loadRequestHistory(); // Reload the requests
+				loadUserAvailableLimit(); // Reload available limit
 			} else {
 				showToast(response.data.error || "Failed to submit request", "error");
 			}

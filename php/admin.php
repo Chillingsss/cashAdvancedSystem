@@ -36,13 +36,17 @@ class Admin {
     include "connection.php";
 
     try {
-        $sql = "SELECT a.user_id, a.user_firstname, a.user_lastname, a.user_contactNumber, a.user_address, a.user_email, a.user_username, a.user_status, b.userL_id, b.userL_name FROM tbluser a
+        $sql = "SELECT a.user_id, a.user_firstname, a.user_lastname, a.user_contactNumber, a.user_address, a.user_email, a.user_username, a.user_status, a.user_availableLimit, b.userL_id, b.userL_name FROM tbluser a
                 INNER JOIN tbluserlevel b ON a.user_userLevel = b.userL_id";
         $stmt = $conn->prepare($sql);
         $stmt->execute();
 
         if ($stmt->rowCount() > 0) {
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Cast user_availableLimit to float for each user
+            foreach ($users as &$user) {
+                $user['user_availableLimit'] = (float)$user['user_availableLimit'];
+            }
             return json_encode($users);
         }
         return json_encode([]); // Return empty array instead of null
@@ -82,8 +86,13 @@ class Admin {
       // Hash the password
       $hashedPassword = password_hash($json['password'], PASSWORD_DEFAULT);
 
-      $sql = "INSERT INTO tbluser (user_firstname, user_lastname, user_contactNumber, user_address, user_email, user_username, user_password, user_userLevel, user_status) 
-              VALUES (:firstname, :lastname, :contactNumber, :address, :email, :username, :password, :userLevel, :status)";
+      // Set default available limit if not provided
+      if (!isset($json['available_limit']) || !is_numeric($json['available_limit'])) {
+        $json['available_limit'] = 0;
+      }
+
+      $sql = "INSERT INTO tbluser (user_firstname, user_lastname, user_contactNumber, user_address, user_email, user_username, user_password, user_userLevel, user_status, user_availableLimit) 
+              VALUES (:firstname, :lastname, :contactNumber, :address, :email, :username, :password, :userLevel, :status, :availableLimit)";
       
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(':firstname', $json['firstname']);
@@ -95,8 +104,12 @@ class Admin {
       $stmt->bindParam(':password', $hashedPassword);
       $stmt->bindParam(':userLevel', $json['userLevel']);
       $stmt->bindParam(':status', $json['status']);
+      $stmt->bindParam(':availableLimit', $json['available_limit']);
+      
       if ($stmt->execute()) {
-        return json_encode(['success' => true]);
+        // Return the new user with availableLimit as float
+        $json['user_availableLimit'] = (float)$json['available_limit'];
+        return json_encode(['success' => true, 'user' => $json]);
       } else {
         return json_encode(['error' => 'Failed to add user']);
       }
@@ -124,7 +137,8 @@ class Admin {
                 user_email = :email, 
                 user_username = :username, 
                 user_userLevel = :userLevel, 
-                user_status = :status";
+                user_status = :status,
+                user_availableLimit = :availableLimit";
 
       if ($updatePassword) {
         $sql .= ", user_password = :password";
@@ -141,6 +155,8 @@ class Admin {
       $stmt->bindParam(':username', $json['username']);
       $stmt->bindParam(':userLevel', $json['userLevel']);
       $stmt->bindParam(':status', $json['status']);
+      $stmt->bindParam(':availableLimit', $json['available_limit']);
+      
       $stmt->bindParam(':userId', $json['userId']);
 
       if ($updatePassword) {
@@ -149,12 +165,60 @@ class Admin {
       }
 
       if ($stmt->execute()) {
-        return json_encode(['success' => true]);
+        // Return the updated user with availableLimit as float
+        $json['user_availableLimit'] = (float)$json['available_limit'];
+        return json_encode(['success' => true, 'user' => $json]);
       } else {
         return json_encode(['error' => 'Failed to update user']);
       }
     } catch (PDOException $e) {
       error_log("Database error in editUser: " . $e->getMessage());
+      return json_encode(['error' => 'Database error occurred']);
+    }
+  }
+
+  function getUserAvailableLimit($json) {
+    try {
+      include "connection.php";
+      
+      $json = json_decode($json, true);
+      
+      $sql = "SELECT user_availableLimit FROM tbluser WHERE user_id = :userId";
+              
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':userId', $json['userId']);
+      $stmt->execute();
+      
+      if ($stmt->rowCount() > 0) {
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return json_encode(['available_limit' => $result['user_availableLimit']]);
+      }
+      
+      return json_encode(['available_limit' => 0]);
+    } catch (PDOException $e) {
+      error_log("Database error in getUserAvailableLimit: " . $e->getMessage());
+      return json_encode(['error' => 'Database error occurred']);
+    }
+  }
+
+  function setUserAvailableLimit($json) {
+    try {
+      include "connection.php";
+      
+      $json = json_decode($json, true);
+      
+      $sql = "UPDATE tbluser SET user_availableLimit = :limit WHERE user_id = :userId";
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':limit', $json['limit']);
+      $stmt->bindParam(':userId', $json['userId']);
+      
+      if ($stmt->execute()) {
+        return json_encode(['success' => true]);
+      } else {
+        return json_encode(['error' => 'Failed to update limit']);
+      }
+    } catch (PDOException $e) {
+      error_log("Database error in setUserAvailableLimit: " . $e->getMessage());
       return json_encode(['error' => 'Database error occurred']);
     }
   }
@@ -237,6 +301,78 @@ class Admin {
         return json_encode(['error' => 'Database error occurred']);
     }
   }
+
+  function getApprovedRequests() {
+    include "connection.php";
+
+    try {
+        $approvedStatusId = 19; // adjust if needed
+        $sql = "SELECT 
+                    a.req_id, 
+                    a.req_userId, 
+                    a.req_purpose, 
+                    a.req_desc,
+                    a.req_budget, 
+                    a.req_cashMethodId,
+                    c.statusR_name,
+                    b.reqS_datetime,
+                    d.user_firstname,
+                    d.user_lastname
+                FROM tblrequest a
+                INNER JOIN tblrequeststatus b ON a.req_id = b.reqS_reqId
+                INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                INNER JOIN tbluser d ON a.req_userId = d.user_id
+                WHERE c.statusR_id = :approvedStatusId
+                ORDER BY a.req_datetime DESC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':approvedStatusId', $approvedStatusId);
+        $stmt->execute();
+        
+        return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    } catch (PDOException $e) {
+        error_log("Database error in getApprovedRequests: " . $e->getMessage());
+        return json_encode([]);
+    }
+  }
+
+  function getAllRequestStatusHistory() {
+    include "connection.php";
+    try {
+        $sql = "SELECT 
+                    a.req_id, 
+                    a.req_userId, 
+                    a.req_purpose, 
+                    a.req_desc,
+                    a.req_budget, 
+                    a.req_cashMethodId,
+                    c.statusR_name,
+                    b.reqS_datetime,
+                    d.user_firstname,
+                    d.user_lastname
+                FROM tblrequest a
+                INNER JOIN tblrequeststatus b ON a.req_id = b.reqS_reqId
+                INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                INNER JOIN tbluser d ON a.req_userId = d.user_id
+                ORDER BY b.reqS_datetime DESC";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    } catch (PDOException $e) {
+        error_log("Database error in getAllRequestStatusHistory: " . $e->getMessage());
+        return json_encode([]);
+    }
+  }
+
+  function getTotalBudgeted() {
+    include "connection.php";
+    $sql = "SELECT SUM(user_availableLimit) as total_budgeted FROM tbluser";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode(['total_budgeted' => floatval($result['total_budgeted'] ?? 0)]);
+  }
 }
 
 $operation = isset($_POST["operation"]) ? $_POST["operation"] : "0";
@@ -260,14 +396,29 @@ switch ($operation) {
   case "editUser":
     echo $admin->editUser($json);
     break;
+  case "getUserAvailableLimit":
+    echo $admin->getUserAvailableLimit($json);
+    break;
+  case "setUserAvailableLimit":
+    echo $admin->setUserAvailableLimit($json);
+    break;
   case "getRequestCash":
     echo $admin->getRequestCash();
+    break;
+  case "getApprovedRequests":
+    echo $admin->getApprovedRequests();
     break;
   case "approveRequest":
     echo $admin->approveRequest($json);
     break;
   case "rejectRequest":
     echo $admin->rejectRequest($json);
+    break;
+  case "getAllRequestStatusHistory":
+    echo $admin->getAllRequestStatusHistory();
+    break;
+  case "getTotalBudgeted":
+    echo $admin->getTotalBudgeted();
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

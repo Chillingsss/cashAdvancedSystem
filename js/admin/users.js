@@ -41,7 +41,7 @@ async function fetchUsers() {
 			const tbody = document.querySelector("tbody");
 			tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-4 text-center text-red-500">
+                    <td colspan="6" class="px-6 py-4 text-center text-red-500">
                         ${users.error}
                     </td>
                 </tr>
@@ -51,7 +51,7 @@ async function fetchUsers() {
 			const tbody = document.querySelector("tbody");
 			tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                         No users found
                     </td>
                 </tr>
@@ -64,7 +64,7 @@ async function fetchUsers() {
 		const tbody = document.querySelector("tbody");
 		tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-4 text-center text-red-500">
+                <td colspan="6" class="px-6 py-4 text-center text-red-500">
                     Error loading users. Please try again later.
                 </td>
             </tr>
@@ -80,7 +80,7 @@ function displayUsers(users) {
 	if (users.length === 0) {
 		tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     No users found
                 </td>
             </tr>
@@ -122,6 +122,11 @@ function displayUsers(users) {
                         ${user.user_status == 1 ? "Active" : "Inactive"}
                     </span>
                 </td>
+                <td class="px-5 py-4 whitespace-nowrap align-middle">
+                    <span class="text-sm text-gray-900 dark:text-gray-100">
+                        ₱${formatNumber(Number(user.user_availableLimit) || 0)}
+                    </span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap align-middle text-sm font-medium">
                     <button class="text-primary hover:text-secondary mr-3" title="Edit" onclick="editUser(${
 											user.user_id
@@ -137,6 +142,14 @@ function displayUsers(users) {
             </tr>
         `;
 		tbody.innerHTML += row;
+	});
+}
+
+// Format number as currency
+function formatNumber(num) {
+	return parseFloat(num).toLocaleString("en-US", {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
 	});
 }
 
@@ -196,6 +209,8 @@ function editUser(userId) {
 	document.querySelector('input[name="address"]').value = user.user_address;
 	document.querySelector('input[name="username"]').value = user.user_username;
 	document.querySelector('input[name="password"]').value = "";
+	document.querySelector('input[name="availableLimit"]').value =
+		user.user_availableLimit || 0;
 
 	// Fetch user levels and set the value after loading
 	fetchUserLevels(() => {
@@ -272,6 +287,7 @@ async function handleAddUser(event) {
 		password: formData.get("password"),
 		userLevel: formData.get("userLevel"),
 		status: formData.get("status"),
+		available_limit: Number(formData.get("availableLimit")) || 0,
 	};
 
 	let operation = "addUser";
@@ -330,9 +346,31 @@ async function handleAddUser(event) {
 	}
 }
 
+// Display user info in navbar
+function displayUserInfo() {
+	const user = getSecureSession("user");
+	if (user) {
+		const initials =
+			(user.user_firstname?.[0] || "") + (user.user_lastname?.[0] || "");
+		const userAvatar = document.getElementById("userAvatar");
+		const userFirstName = document.getElementById("userFirstName");
+
+		if (userAvatar) {
+			userAvatar.textContent = initials.toUpperCase();
+		}
+
+		if (userFirstName) {
+			userFirstName.textContent = user.user_firstname || "";
+			userFirstName.classList.remove("hidden");
+			userFirstName.classList.add("md:block");
+		}
+	}
+}
+
 // Add event listeners when the document loads
 document.addEventListener("DOMContentLoaded", () => {
 	fetchUsers();
+	displayUserInfo();
 
 	// Add User Modal Event Listeners
 	const addUserBtn = document.getElementById("addUserBtn");
