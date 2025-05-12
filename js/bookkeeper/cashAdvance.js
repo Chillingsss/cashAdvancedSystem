@@ -1,13 +1,20 @@
 let allRequests = [];
 
 document.addEventListener("DOMContentLoaded", function () {
-	fetchBookkeeperRequests();
-	// Filter and search event listeners
+	// Set default date filter to 'today'
 	const dateFilter = document.getElementById("dateFilter");
+	if (dateFilter) {
+		dateFilter.value = "today";
+	}
+	fetchBookkeeperRequests();
+	fetchBudgetStats();
+	fetchCompletedStats();
+	// Filter and search event listeners
 	const startDate = document.getElementById("startDate");
 	const endDate = document.getElementById("endDate");
 	const searchInput = document.getElementById("searchInput");
 	const customDateRange = document.getElementById("customDateRange");
+	const statusFilter = document.getElementById("statusFilter");
 
 	if (dateFilter) {
 		dateFilter.addEventListener("change", function () {
@@ -18,6 +25,11 @@ document.addEventListener("DOMContentLoaded", function () {
 	if (startDate) startDate.addEventListener("change", applyFiltersAndRender);
 	if (endDate) endDate.addEventListener("change", applyFiltersAndRender);
 	if (searchInput) searchInput.addEventListener("input", applyFiltersAndRender);
+	if (statusFilter)
+		statusFilter.addEventListener("change", applyFiltersAndRender);
+
+	// Apply filters initially with 'today' as default
+	applyFiltersAndRender();
 });
 
 function fetchBookkeeperRequests() {
@@ -41,6 +53,74 @@ function fetchBookkeeperRequests() {
 		})
 		.catch((error) => {
 			console.error("Error fetching requests:", error);
+		});
+}
+
+function fetchBudgetStats() {
+	// Fetch total budgeted
+	const totalBudgetedForm = new FormData();
+	totalBudgetedForm.append("operation", "getTotalBudgeted");
+	axios
+		.post(
+			"http://localhost/cashAdvancedSystem/php/bookkeeper.php",
+			totalBudgetedForm
+		)
+		.then((response) => {
+			let totalBudgeted = response.data;
+			if (typeof totalBudgeted === "string") {
+				try {
+					totalBudgeted = JSON.parse(totalBudgeted);
+				} catch (e) {
+					totalBudgeted = { total_budgeted: 0 };
+				}
+			}
+			// Fetch used money
+			const usedMoneyForm = new FormData();
+			usedMoneyForm.append("operation", "getUsedMoney");
+			axios
+				.post(
+					"http://localhost/cashAdvancedSystem/php/bookkeeper.php",
+					usedMoneyForm
+				)
+				.then((usedRes) => {
+					let usedMoney = usedRes.data;
+					if (typeof usedMoney === "string") {
+						try {
+							usedMoney = JSON.parse(usedMoney);
+						} catch (e) {
+							usedMoney = { used_money: 0 };
+						}
+					}
+					const availableMoney =
+						(totalBudgeted.total_budgeted || 0) - (usedMoney.used_money || 0);
+					document.getElementById("totalBudgeted").textContent =
+						"₱" + (totalBudgeted.total_budgeted || 0).toLocaleString();
+					document.getElementById("usedMoney").textContent =
+						"₱" + (usedMoney.used_money || 0).toLocaleString();
+					document.getElementById("availableMoney").textContent =
+						"₱" + availableMoney.toLocaleString();
+				});
+		});
+}
+
+function fetchCompletedStats() {
+	const formData = new FormData();
+	formData.append("operation", "getCompletedStats");
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/bookkeeper.php", formData)
+		.then((response) => {
+			let stats = response.data;
+			if (typeof stats === "string") {
+				try {
+					stats = JSON.parse(stats);
+				} catch (e) {
+					stats = { completed_count: 0, total_advanced: 0 };
+				}
+			}
+			document.getElementById("completedCount").textContent =
+				stats.completed_count;
+			document.getElementById("totalAdvanced").textContent =
+				"₱" + (stats.total_advanced || 0).toLocaleString();
 		});
 }
 
@@ -100,6 +180,14 @@ function applyFiltersAndRender() {
 		}
 	}
 
+	// Status filter
+	const statusFilter = document.getElementById("statusFilter").value;
+	if (statusFilter && statusFilter !== "all") {
+		filtered = filtered.filter(
+			(req) => req.statusR_name.toLowerCase() === statusFilter
+		);
+	}
+
 	// Search filter
 	const search = document
 		.getElementById("searchInput")
@@ -149,7 +237,9 @@ function renderBookkeeperRequests(requests) {
 		const card = `
   <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6 flex flex-col gap-3 transition hover:shadow-lg">
     <div class="flex items-center justify-between mb-2">
-      <span class="font-semibold text-lg text-primary">${req.req_purpose}</span>
+      <span class="font-semibold text-lg text-red-700 dark:text-red-500">${
+				req.req_purpose
+			}</span>
       <span class="px-3 py-1 rounded-full text-xs font-medium border ${statusColor}">
         ${req.statusR_name}
       </span>
@@ -168,7 +258,7 @@ function renderBookkeeperRequests(requests) {
     </div>
     ${
 			isApproved
-				? `<div class=\"flex gap-2 mt-4\"><button class=\"complete-btn flex-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white transition font-medium py-2 rounded-lg\" data-id=\"${req.req_id}\">Complete</button></div>`
+				? `<div class=\"flex gap-2 mt-4\"><button class=\"complete-btn flex-1 bg-blue-50 dark:bg-blue-900 dark:text-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:hover:bg-blue-800 transition font-medium py-2 rounded-lg\" data-id=\"${req.req_id}\">Complete</button></div>`
 				: ""
 		}
   </div>
@@ -266,6 +356,7 @@ function handleRequestAction(requestId, action) {
 			if (response.data && response.data.success) {
 				showToast("Request completed successfully!", "success");
 				fetchBookkeeperRequests();
+				fetchBudgetStats();
 			} else {
 				showToast(
 					response.data.error || "Failed to complete request.",
@@ -282,23 +373,15 @@ function handleRequestAction(requestId, action) {
 
 function updateDashboardStats(requests) {
 	let pending = 0,
-		approved = 0,
-		completed = 0,
-		totalAdvanced = 0;
+		approved = 0;
 	requests.forEach((req) => {
 		const status = req.statusR_name.toLowerCase();
 		if (status === "pending") pending++;
-		if (status === "completed") {
-			completed++;
-			totalAdvanced += Number(req.req_budget);
-		}
 		if (status === "approved") {
 			approved++;
 		}
 	});
 	document.getElementById("pendingRequestsCount").textContent = pending;
 	document.getElementById("approvedRequestsCount").textContent = approved;
-	document.getElementById("completedCount").textContent = completed;
-	document.getElementById("totalAdvanced").textContent =
-		"₱" + totalAdvanced.toLocaleString();
+	// completedCount and totalAdvanced are now set by fetchCompletedStats
 }

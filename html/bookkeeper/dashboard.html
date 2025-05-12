@@ -60,7 +60,7 @@
 								<span>Dashboard</span>
 							</a>
 						</li>
-						<li>
+						<!-- <li>
 							<a
 								href="#"
 								class="flex items-center space-x-3 p-3 rounded-lg hover:bg-secondary/80 transition-colors group"
@@ -114,7 +114,7 @@
 								></i>
 								<span>Settings</span>
 							</a>
-						</li>
+						</li> -->
 					</ul>
 				</nav>
 			</div>
@@ -158,24 +158,25 @@
 								</button>
 								<div
 									id="userDropdown"
-									class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50"
+									class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50 transition-all duration-200"
 								>
 									<a
 										href="#"
-										class="block px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+										class="block px-5 py-3 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
 									>
 										<i class="fas fa-user mr-2"></i>Profile
 									</a>
 									<button
 										id="toggleDarkMode"
-										class="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+										class="w-full text-left px-5 py-3 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center rounded-lg transition"
 									>
 										<i class="fas fa-moon mr-2"></i>
 										<span id="darkModeText">Dark Mode</span>
 									</button>
+									<hr class="my-2 border-gray-200 dark:border-gray-700" />
 									<button
 										id="logoutBtn"
-										class="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+										class="w-full text-left px-5 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 flex items-center rounded-lg transition font-semibold"
 									>
 										<i class="fas fa-sign-out-alt mr-2"></i>Log Out
 									</button>
@@ -210,22 +211,65 @@
 							</div>
 						</div>
 					</div>
+					<!-- New Total Budget Card -->
 					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
 						<div class="flex items-center">
 							<div
 								class="p-3 rounded-full bg-primary bg-opacity-10 text-primary"
 							>
-								<i class="fas fa-check-circle text-2xl"></i>
+								<i class="fas fa-wallet text-2xl"></i>
 							</div>
 							<div class="ml-4">
 								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
-									Approved Requests
+									Total Budget
 								</h2>
 								<p
 									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
-									id="approvedRequestsCount"
+									id="totalBudgeted"
 								>
-									0
+									₱0
+								</p>
+							</div>
+						</div>
+					</div>
+					<!-- New Used Money Card -->
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center">
+							<div
+								class="p-3 rounded-full bg-green-500 bg-opacity-10 text-green-700"
+							>
+								<i class="fas fa-arrow-up text-2xl"></i>
+							</div>
+							<div class="ml-4">
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Used Money
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="usedMoney"
+								>
+									₱0
+								</p>
+							</div>
+						</div>
+					</div>
+					<!-- New Available Money Card -->
+					<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+						<div class="flex items-center">
+							<div
+								class="p-3 rounded-full bg-blue-500 bg-opacity-10 text-blue-700"
+							>
+								<i class="fas fa-arrow-down text-2xl"></i>
+							</div>
+							<div class="ml-4">
+								<h2 class="text-gray-600 dark:text-gray-300 text-sm">
+									Available Money
+								</h2>
+								<p
+									class="text-2xl font-semibold text-gray-800 dark:text-gray-100"
+									id="availableMoney"
+								>
+									₱0
 								</p>
 							</div>
 						</div>
@@ -303,6 +347,23 @@
 							id="endDate"
 							class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 px-2 py-1"
 						/>
+					</div>
+					<!-- Status Filter -->
+					<div>
+						<label
+							class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+							>Status</label
+						>
+						<select
+							id="statusFilter"
+							class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 px-3 py-2"
+						>
+							<option value="all">All</option>
+							<option value="pending">Pending</option>
+							<option value="approved">Approved</option>
+							<option value="completed">Completed</option>
+							<option value="rejected">Rejected</option>
+						</select>
 					</div>
 					<!-- Search -->
 					<div class="flex-1">

@@ -22,84 +22,118 @@
 			};
 		</script>
 	</head>
-	<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
-			<div
-				class="max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden"
-			>
-				<div class="bg-primary p-6 text-center">
-					<img
-						src="../images/imfLogo.png"
-						alt="Logo"
-						class="h-24 mx-auto mb-2"
-					/>
-					<h2 class="text-white text-2xl font-bold">Construction Corp.</h2>
+	<body
+		class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 via-white to-gray-200"
+	>
+		<div class="w-full max-w-md mx-auto p-6">
+			<div class="bg-white rounded-3xl shadow-2xl p-8 sm:p-10">
+				<div class="flex flex-col items-center mb-6">
+					<div
+						class="bg-primary rounded-full p-4 mb-2 flex items-center justify-center shadow-lg"
+					>
+						<img
+							src="../images/imfLogo.png"
+							alt="Logo"
+							class="h-16 w-16 object-contain"
+						/>
+					</div>
+					<h2 class="text-primary text-2xl font-extrabold tracking-tight">
+						Construction Corp.
+					</h2>
 				</div>
-				<div class="p-6">
-					<form id="loginForm" class="space-y-6">
-						<div>
-							<label
-								for="username"
-								class="block text-sm font-medium text-gray-700"
-								>Username</label
+				<form id="loginForm" class="space-y-6">
+					<div>
+						<label
+							for="username"
+							class="block text-sm font-semibold text-gray-700 mb-1"
+							>Username</label
+						>
+						<div class="relative">
+							<span
+								class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"
 							>
-							<div class="mt-1 relative rounded-md shadow-sm">
-								<div
-									class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-								>
-									<i class="fas fa-user text-gray-400"></i>
-								</div>
-								<input
-									type="text"
-									name="username"
-									id="username"
-									required
-									class="focus:ring-primary focus:border-primary block w-full h-12 pl-10 sm:text-sm border-gray-300 rounded-md"
-									placeholder="Enter your username"
-								/>
-							</div>
+								<i class="fas fa-user"></i>
+							</span>
+							<input
+								type="text"
+								name="username"
+								id="username"
+								required
+								class="block w-full h-12 pl-10 pr-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition"
+								placeholder="Enter your username"
+							/>
 						</div>
-						<div>
-							<label
-								for="password"
-								class="block text-sm font-medium text-gray-700"
-								>Password</label
+					</div>
+					<div>
+						<label
+							for="password"
+							class="block text-sm font-semibold text-gray-700 mb-1"
+							>Password</label
+						>
+						<div class="relative">
+							<span
+								class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"
 							>
-							<div class="mt-1 relative rounded-md shadow-sm">
-								<div
-									class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-								>
-									<i class="fas fa-lock text-gray-400"></i>
-								</div>
-								<input
-									type="password"
-									name="password"
-									id="password"
-									required
-									class="focus:ring-primary focus:border-primary block w-full h-12 pl-10 pr-10 sm:text-sm border-gray-300 rounded-md"
-									placeholder="Enter your password"
-								/>
-								<button
-									type="button"
-									id="togglePassword"
-									class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-								>
-									<i class="fas fa-eye"></i>
-								</button>
-							</div>
-						</div>
-						<div>
+								<i class="fas fa-lock"></i>
+							</span>
+							<input
+								type="password"
+								name="password"
+								id="password"
+								required
+								class="block w-full h-12 pl-10 pr-10 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary transition"
+								placeholder="Enter your password"
+							/>
 							<button
-								type="submit"
-								class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+								type="button"
+								id="togglePassword"
+								class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-primary focus:outline-none"
 							>
-								Sign In
+								<i class="fas fa-eye"></i>
 							</button>
 						</div>
-					</form>
-				</div>
+					</div>
+					<div>
+						<button
+							id="loginBtn"
+							type="submit"
+							class="w-full flex justify-center items-center py-3 px-4 rounded-xl shadow font-semibold text-white bg-primary hover:bg-secondary transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+						>
+							<span id="loginBtnText">Sign In</span>
+							<svg
+								id="loginSpinner"
+								class="hidden ml-2 w-5 h-5 animate-spin text-white"
+								fill="none"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									class="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="4"
+								></circle>
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+								></path>
+							</svg>
+						</button>
+					</div>
+				</form>
 			</div>
 		</div>
+		<!-- Toast Notification -->
+		<div
+			id="toast"
+			class="hidden fixed bottom-6 right-6 z-50 min-w-[200px] max-w-xs rounded-lg shadow-lg px-6 py-4 flex items-center space-x-3 transition-all duration-300 bg-green-500 text-white"
+		>
+			<i class="fas fa-check-circle"></i>
+			<span id="toastMessage"></span>
+		</div>
+		<!-- Scripts -->
 		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 		<script src="../js/crypto.js"></script>
 		<script src="../js/auth.js"></script>
@@ -110,12 +144,10 @@
 			const password = document.getElementById("password");
 
 			togglePassword.addEventListener("click", function () {
-				// Toggle the type attribute
 				const type =
 					password.getAttribute("type") === "password" ? "text" : "password";
 				password.setAttribute("type", type);
 
-				// Toggle the eye icon
 				this.querySelector("i").classList.toggle("fa-eye");
 				this.querySelector("i").classList.toggle("fa-eye-slash");
 			});

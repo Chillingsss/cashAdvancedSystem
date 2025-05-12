@@ -60,6 +60,85 @@ class Bookkeeper {
         return json_encode(['error' => 'Database error occurred']);
     }
   }
+  function getApprovedRequests() {
+    include "connection.php";
+
+    try {
+        $approvedStatusId = 19; // 'approved'
+        $sql = "SELECT 
+                    a.req_id, 
+                    a.req_userId, 
+                    a.req_purpose, 
+                    a.req_desc,
+                    a.req_budget, 
+                    a.req_cashMethodId,
+                    c.statusR_name,
+                    b.reqS_datetime,
+                    d.user_firstname,
+                    d.user_lastname
+                FROM tblrequest a
+                INNER JOIN tblrequeststatus b ON a.req_id = b.reqS_reqId
+                INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                INNER JOIN tbluser d ON a.req_userId = d.user_id
+                WHERE c.statusR_id = :approvedStatusId
+                ORDER BY a.req_datetime DESC";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':approvedStatusId', $approvedStatusId);
+        $stmt->execute();
+        
+        return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    } catch (PDOException $e) {
+        error_log("Database error in getApprovedRequests: " . $e->getMessage());
+        return json_encode([]);
+    }
+  }
+
+  function getTotalBudgeted() {
+    include "connection.php";
+    $sql = "SELECT SUM(user_availableLimit) as total_budgeted FROM tbluser";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode(['total_budgeted' => floatval($result['total_budgeted'] ?? 0)]);
+  }
+
+  function getUsedMoney() {
+    include "connection.php";
+    $completedStatusId = 18; // adjust to your actual statusR_id for 'Completed'
+    $sql = "SELECT SUM(a.req_budget) as used_money
+            FROM tblrequest a
+            INNER JOIN (
+                SELECT reqS_reqId, MAX(reqS_id) as max_reqS_id
+                FROM tblrequeststatus
+                GROUP BY reqS_reqId
+            ) latest_status ON a.req_id = latest_status.reqS_reqId
+            INNER JOIN tblrequeststatus b ON b.reqS_id = latest_status.max_reqS_id
+            WHERE b.reqS_statusId = :completedStatusId";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':completedStatusId', $completedStatusId);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode(['used_money' => floatval($result['used_money'] ?? 0)]);
+  }
+
+  function getCompletedStats() {
+    include "connection.php";
+    $completedStatusId = 18; // statusR_id for 'Completed'
+    $sql = "SELECT COUNT(DISTINCT reqS_reqId) as completed_count, SUM(a.req_budget) as total_advanced
+            FROM tblrequeststatus b
+            INNER JOIN tblrequest a ON a.req_id = b.reqS_reqId
+            WHERE b.reqS_statusId = :completedStatusId";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':completedStatusId', $completedStatusId);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode([
+      'completed_count' => intval($result['completed_count'] ?? 0),
+      'total_advanced' => floatval($result['total_advanced'] ?? 0)
+    ]);
+  }
 
 }
 
@@ -74,6 +153,18 @@ switch ($operation) {
     break;
   case "completeRequest":
     echo $bookkeeper->completeRequest($json);
+    break;
+  case "getApprovedRequests":
+    echo $bookkeeper->getApprovedRequests();
+    break;
+  case "getTotalBudgeted":
+    echo $bookkeeper->getTotalBudgeted();
+    break;
+  case "getUsedMoney":
+    echo $bookkeeper->getUsedMoney();
+    break;
+  case "getCompletedStats":
+    echo $bookkeeper->getCompletedStats();
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

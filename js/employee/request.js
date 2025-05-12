@@ -249,7 +249,7 @@ function populateRequestTable(requests) {
 		card.style.borderTopColor = "#8B1C23"; // sidebar primary color
 		card.innerHTML = `
 			<div class="flex justify-between items-center mb-1">
-				<span class="font-semibold text-lg darK:text-red-500 text-red-600">${
+				<span class="font-semibold text-lg dark:text-red-500 text-red-700">${
 					request.req_purpose
 				}</span>
 				<span class="px-3 py-1 rounded-full text-xs font-semibold ${statusClass}">${

@@ -374,6 +374,42 @@ class Admin {
     return json_encode(['total_budgeted' => floatval($result['total_budgeted'] ?? 0)]);
   }
 
+  function getUsedMoney() {
+    include "connection.php";
+    $completedStatusId = 18; // adjust to your actual statusR_id for 'Completed'
+    $sql = "SELECT SUM(a.req_budget) as used_money
+            FROM tblrequest a
+            INNER JOIN (
+                SELECT reqS_reqId, MAX(reqS_id) as max_reqS_id
+                FROM tblrequeststatus
+                GROUP BY reqS_reqId
+            ) latest_status ON a.req_id = latest_status.reqS_reqId
+            INNER JOIN tblrequeststatus b ON b.reqS_id = latest_status.max_reqS_id
+            WHERE b.reqS_statusId = :completedStatusId";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':completedStatusId', $completedStatusId);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode(['used_money' => floatval($result['used_money'] ?? 0)]);
+  }
+
+  function getCompletedStats() {
+    include "connection.php";
+    $completedStatusId = 18; // statusR_id for 'Completed'
+    $sql = "SELECT COUNT(DISTINCT reqS_reqId) as completed_count, SUM(a.req_budget) as total_advanced
+            FROM tblrequeststatus b
+            INNER JOIN tblrequest a ON a.req_id = b.reqS_reqId
+            WHERE b.reqS_statusId = :completedStatusId";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':completedStatusId', $completedStatusId);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode([
+      'completed_count' => intval($result['completed_count'] ?? 0),
+      'total_advanced' => floatval($result['total_advanced'] ?? 0)
+    ]);
+  }
+
   function deleteUserById($json)
   {
     try {
@@ -452,6 +488,12 @@ switch ($operation) {
     break;
   case "deleteUser":
     echo $admin->deleteUserById($json);
+    break;
+  case "getUsedMoney":
+    echo $admin->getUsedMoney();
+    break;
+  case "getCompletedStats":
+    echo $admin->getCompletedStats();
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);
