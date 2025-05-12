@@ -240,6 +240,82 @@ class Employee {
         return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
     }
   }
+
+  function getUserProfile($json)
+  {
+    include "connection.php";
+
+    $data = json_decode($json, true);
+    if (!isset($data['userId'])) {
+      return json_encode(['error' => 'User ID is required']);
+    }
+
+    $sql = "SELECT user_id, user_firstname, user_lastname, user_email, user_contactNumber, user_address, user_username, user_password FROM tbluser WHERE user_id = :userId";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':userId', $data['userId']);
+    $stmt->execute();
+
+    $userProfile = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode($userProfile);
+  }
+
+  function editUserProfile($json)
+  {
+    include "connection.php";
+
+    $data = json_decode($json, true);
+    if (!isset($data['userId'])) {
+      return json_encode(['error' => 'User ID is required']);
+    }
+
+    try {
+      // First verify the current password
+      $verifySql = "SELECT user_password FROM tbluser WHERE user_id = :userId";
+      $verifyStmt = $conn->prepare($verifySql);
+      $verifyStmt->bindParam(':userId', $data['userId']);
+      $verifyStmt->execute();
+      
+      if ($verifyStmt->rowCount() === 0) {
+        return json_encode(['error' => 'User not found']);
+      }
+
+      $userData = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+      if (!password_verify($data['currentPassword'], $userData['user_password'])) {
+        return json_encode(['error' => 'Current password is incorrect']);
+      }
+
+      // Hash the new password if provided, otherwise keep the current one
+      $hashedPassword = isset($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : $userData['user_password'];
+
+      $sql = "UPDATE tbluser SET 
+              user_firstname = :firstname, 
+              user_lastname = :lastname, 
+              user_email = :email, 
+              user_phone = :phone, 
+              user_address = :address, 
+              user_username = :username, 
+              user_password = :password 
+              WHERE user_id = :userId";
+              
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':userId', $data['userId']);
+      $stmt->bindParam(':firstname', $data['firstname']);
+      $stmt->bindParam(':lastname', $data['lastname']);
+      $stmt->bindParam(':email', $data['email']);
+      $stmt->bindParam(':phone', $data['phone']);
+      $stmt->bindParam(':address', $data['address']);
+      $stmt->bindParam(':username', $data['username']);
+      $stmt->bindParam(':password', $hashedPassword);
+
+      if ($stmt->execute()) {
+        return json_encode(['success' => true]);
+      } else {
+        return json_encode(['error' => 'Failed to update profile']);
+      }
+    } catch (PDOException $e) {
+      return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
 }
 
 $operation = isset($_POST["operation"]) ? $_POST["operation"] : "0";
@@ -265,6 +341,12 @@ switch ($operation) {
     break;
   case "getRequestStatusHistory":
     echo $employee->getRequestStatusHistory($json);
+    break;
+  case "getUserProfile":
+    echo $employee->getUserProfile($json);
+    break;
+  case "editUserProfile":
+    echo $employee->editUserProfile($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

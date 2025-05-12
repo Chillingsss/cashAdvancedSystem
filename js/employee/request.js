@@ -239,6 +239,9 @@ function populateRequestTable(requests) {
 			case "rejected":
 				statusClass = "bg-red-100 text-red-800";
 				break;
+			case "completed":
+				statusClass = "bg-blue-100 text-blue-800";
+				break;
 			default:
 				statusClass = "bg-gray-100 text-gray-800";
 		}

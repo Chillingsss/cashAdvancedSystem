@@ -159,26 +159,65 @@
 								</button>
 								<div
 									id="userDropdown"
-									class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-2 z-50"
+									class="hidden absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50 transition-all duration-200"
 								>
+									<!-- User Info Section -->
+									<div
+										class="px-5 py-3 border-b border-gray-200 dark:border-gray-700"
+									>
+										<div class="flex items-center space-x-3">
+											<div
+												class="h-12 w-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-lg"
+												id="userAvatarLarge"
+											></div>
+											<div class="flex-1">
+												<h4
+													class="font-semibold text-gray-800 dark:text-gray-100"
+													id="userFullName"
+												>
+													Loading...
+												</h4>
+												<p
+													class="text-sm text-gray-500 dark:text-gray-400"
+													id="userEmail"
+												>
+													Loading...
+												</p>
+											</div>
+										</div>
+									</div>
+
 									<a
 										href="#"
-										class="block px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+										class="block px-5 py-3 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
 									>
-										<i class="fas fa-user mr-2"></i>Profile
+										<div class="flex items-center">
+											<i
+												class="fas fa-user mr-3 group-hover:scale-110 transition-transform"
+											></i>
+											<span>View Profile</span>
+										</div>
 									</a>
 									<button
 										id="toggleDarkMode"
-										class="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+										class="w-full text-left px-5 py-3 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
 									>
-										<i class="fas fa-moon mr-2"></i>
-										<span id="darkModeText">Dark Mode</span>
+										<div class="flex items-center">
+											<i
+												class="fas fa-moon mr-3 group-hover:scale-110 transition-transform"
+											></i>
+											<span id="darkModeText">Dark Mode</span>
+										</div>
 									</button>
+									<hr class="my-2 border-gray-200 dark:border-gray-700" />
 									<button
 										id="logoutBtn"
-										class="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+										class="w-full text-left px-5 py-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition group flex items-center"
 									>
-										<i class="fas fa-sign-out-alt mr-2"></i>Log Out
+										<i
+											class="fas fa-sign-out-alt mr-3 group-hover:scale-110 transition-transform"
+										></i>
+										<span>Log Out</span>
 									</button>
 								</div>
 							</div>
@@ -408,15 +447,37 @@
 				}
 			});
 
-			// Set user initials and name from sessionStorage
+			// Set user information in dropdown
 			const user = getSecureSession("user");
 			if (user) {
 				const initials =
 					(user.user_firstname[0] || "") + (user.user_lastname[0] || "");
+				const fullName = `${user.user_firstname} ${user.user_lastname}`;
+
+				// Set small avatar in header
 				document.getElementById("userAvatar").textContent =
 					initials.toUpperCase();
 				document.getElementById("userFirstName").textContent =
 					user.user_firstname;
+
+				// Set large avatar and details in dropdown
+				document.getElementById("userAvatarLarge").textContent =
+					initials.toUpperCase();
+				document.getElementById("userFullName").textContent = fullName;
+				document.getElementById("userEmail").textContent =
+					user.user_email || "No email available";
+
+				// Set user limits if available
+				if (user.base_limit) {
+					document.getElementById("userBaseLimit").textContent = `₱${Number(
+						user.base_limit
+					).toLocaleString()}`;
+				}
+				if (user.available_limit) {
+					document.getElementById(
+						"userAvailableLimit"
+					).textContent = `₱${Number(user.available_limit).toLocaleString()}`;
+				}
 			}
 
 			// Dark Mode
