@@ -5,14 +5,16 @@ function initProfileModal() {
 	const profileForm = document.getElementById("profileForm");
 	const closeProfileModal = document.getElementById("closeProfileModal");
 	const cancelProfileEdit = document.getElementById("cancelProfileEdit");
-	const viewProfileBtn = document.querySelector('a[href="#"]');
+	const viewProfileBtn = document.getElementById("viewProfileBtn");
 
 	// Show Profile Modal
-	viewProfileBtn.addEventListener("click", function (e) {
-		e.preventDefault();
-		loadUserProfile();
-		profileModal.classList.remove("hidden");
-	});
+	if (viewProfileBtn) {
+		viewProfileBtn.addEventListener("click", function (e) {
+			e.preventDefault();
+			loadUserProfile();
+			profileModal.classList.remove("hidden");
+		});
+	}
 
 	// Close Profile Modal
 	function closeModal() {

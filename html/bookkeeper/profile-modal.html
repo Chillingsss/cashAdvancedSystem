@@ -4,11 +4,11 @@
 	class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden"
 >
 	<div
-		class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg p-0 relative overflow-hidden"
+		class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-full sm:max-w-lg p-4 sm:p-0 relative overflow-hidden max-h-screen overflow-y-auto mx-2"
 	>
 		<!-- Header -->
 		<div
-			class="flex items-center gap-4 px-8 pt-8 pb-4 border-b border-gray-200 dark:border-gray-700"
+			class="flex items-center gap-4 px-2 sm:px-8 pt-4 sm:pt-8 pb-2 sm:pb-4 border-b border-gray-200 dark:border-gray-700"
 		>
 			<div class="flex-shrink-0 bg-primary/10 rounded-full p-3">
 				<i class="fas fa-user text-3xl text-primary"></i>
@@ -25,7 +25,7 @@
 			</button>
 		</div>
 		<!-- Form -->
-		<form id="profileForm" class="px-8 py-6 space-y-6">
+		<form id="profileForm" class="px-2 sm:px-8 py-4 sm:py-6 space-y-6">
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div>
 					<label
@@ -138,14 +138,7 @@
 					/>
 				</div>
 			</div>
-			<div class="flex justify-end mt-4">
-				<button
-					type="button"
-					id="cancelProfileEdit"
-					class="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-semibold mr-2 hover:bg-gray-300 dark:hover:bg-gray-700 transition"
-				>
-					Cancel
-				</button>
+			<div class="flex flex-col sm:flex-row justify-end mt-4 gap-2 sm:gap-0">
 				<button
 					type="submit"
 					class="px-6 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-secondary transition"

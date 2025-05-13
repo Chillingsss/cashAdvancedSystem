@@ -12,22 +12,33 @@ document.addEventListener("DOMContentLoaded", function () {
 	const customDateRange = document.getElementById("customDateRange");
 
 	if (statusFilter)
-		statusFilter.addEventListener("change", applyFiltersAndRender);
+		statusFilter.addEventListener("change", function () {
+			loadRequestHistory(this.value);
+		});
 	if (dateFilter) {
 		dateFilter.addEventListener("change", function () {
 			customDateRange.classList.toggle("hidden", this.value !== "custom");
-			applyFiltersAndRender();
+			applyFiltersAndRender(true);
 		});
 	}
-	if (startDate) startDate.addEventListener("change", applyFiltersAndRender);
-	if (endDate) endDate.addEventListener("change", applyFiltersAndRender);
-	if (searchInput) searchInput.addEventListener("input", applyFiltersAndRender);
+	if (startDate)
+		startDate.addEventListener("change", function () {
+			applyFiltersAndRender(true);
+		});
+	if (endDate)
+		endDate.addEventListener("change", function () {
+			applyFiltersAndRender(true);
+		});
+	if (searchInput)
+		searchInput.addEventListener("input", function () {
+			applyFiltersAndRender(true);
+		});
 });
 
 let allRequests = [];
 
 // Load user's request history
-function loadRequestHistory() {
+function loadRequestHistory(statusFilterValue = "all") {
 	const user = getSecureSession("user");
 	if (!user) {
 		console.error("No user data found in session");
@@ -44,8 +55,19 @@ function loadRequestHistory() {
 	tableBody.innerHTML = "";
 
 	const formData = new FormData();
-	formData.append("operation", "getRequestCash");
-	formData.append("json", JSON.stringify({ userId: user.user_id }));
+	if (statusFilterValue && statusFilterValue !== "all") {
+		formData.append("operation", "getRequestCashByStatus");
+		formData.append(
+			"json",
+			JSON.stringify({
+				userId: user.user_id,
+				status: capitalizeFirstLetter(statusFilterValue),
+			})
+		);
+	} else {
+		formData.append("operation", "getRequestCash");
+		formData.append("json", JSON.stringify({ userId: user.user_id }));
+	}
 
 	axios
 		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
@@ -77,7 +99,7 @@ function loadRequestHistory() {
 			}
 
 			allRequests = requests;
-			applyFiltersAndRender();
+			applyFiltersAndRender(true); // Indicate that data is freshly loaded
 		})
 		.catch((error) => {
 			console.error("Error loading request history:", error);
@@ -91,17 +113,14 @@ function loadRequestHistory() {
 		});
 }
 
-// Apply filters and render the table
-function applyFiltersAndRender() {
-	let filtered = [...allRequests];
+function capitalizeFirstLetter(str) {
+	if (!str) return str;
+	return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
 
-	// Status filter
-	const statusFilter = document.getElementById("statusFilter").value;
-	if (statusFilter !== "all") {
-		filtered = filtered.filter(
-			(req) => req.statusR_name.toLowerCase() === statusFilter.toLowerCase()
-		);
-	}
+// Apply filters and render the table
+function applyFiltersAndRender(isFreshLoad = false) {
+	let filtered = [...allRequests];
 
 	// Date filter
 	const dateFilter = document.getElementById("dateFilter").value;

@@ -316,6 +316,40 @@ class Employee {
       return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
     }
   }
+
+  function getRequestCashByStatus($json)
+  {
+    include "connection.php";
+    try {
+      $data = json_decode($json, true);
+      if (!$data || !isset($data['userId']) || !isset($data['status'])) {
+        return json_encode(['error' => 'Invalid input data']);
+      }
+      $sql = "SELECT DISTINCT
+                a.req_id,
+                a.req_userId,
+                a.req_purpose,
+                a.req_desc,
+                a.req_budget,
+                a.req_cashMethodId,
+                c.statusR_name,
+                b.reqS_datetime
+              FROM tblrequest a
+              INNER JOIN tblrequeststatus b ON a.req_id = b.reqS_reqId
+              INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+              WHERE a.req_userId = :userId
+                AND c.statusR_name = :statusName
+              ORDER BY a.req_datetime DESC";
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':userId', $data['userId']);
+      $stmt->bindParam(':statusName', $data['status']);
+      $stmt->execute();
+      $requestCash = $stmt->fetchAll(PDO::FETCH_ASSOC);
+      return json_encode($requestCash);
+    } catch (PDOException $e) {
+      return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
 }
 
 $operation = isset($_POST["operation"]) ? $_POST["operation"] : "0";
@@ -347,6 +381,9 @@ switch ($operation) {
     break;
   case "editUserProfile":
     echo $employee->editUserProfile($json);
+    break;
+  case "getRequestCashByStatus":
+    echo $employee->getRequestCashByStatus($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

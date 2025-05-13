@@ -13,6 +13,8 @@
 		<script src="../../js/crypto.js"></script>
 		<script src="../../js/auth.js"></script>
 		<script src="../../js/employee/request-history.js"></script>
+		<script src="../../js/employee/profile.js"></script>
+
 		<script>
 			tailwind.config = {
 				darkMode: "class",
@@ -168,6 +170,7 @@
 									<a
 										href="#"
 										class="block px-5 py-3 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
+										id="viewProfileBtn"
 									>
 										<div class="flex items-center">
 											<i
@@ -347,6 +350,9 @@
 			</main>
 		</div>
 
+		<!-- Modal Placeholder -->
+		<div id="modalPlaceholder"></div>
+
 		<!-- Toast Notification -->
 		<div
 			id="toast"
@@ -495,6 +501,29 @@
 					clearSecureSession("user");
 					window.location.href = "../login.html";
 				});
+
+			// Load profile modal
+			fetch("profile-modal.html")
+				.then((response) => response.text())
+				.then((html) => {
+					document.getElementById("modalPlaceholder").innerHTML = html;
+
+					// Add click handler for View Profile button
+					document
+						.getElementById("viewProfileBtn")
+						.addEventListener("click", function (e) {
+							e.preventDefault();
+							const profileModal = document.getElementById("profileModal");
+							if (profileModal) {
+								profileModal.classList.remove("hidden");
+							}
+						});
+					// Initialize modal logic NOW that modal is in the DOM
+					if (typeof initProfileModal === "function") {
+						initProfileModal();
+					}
+				})
+				.catch((error) => console.error("Error loading profile modal:", error));
 		</script>
 	</body>
 </html>

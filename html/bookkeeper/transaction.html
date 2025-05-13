@@ -146,6 +146,7 @@
 									<a
 										href="#"
 										class="block px-4 py-2 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+										id="viewProfileBtn"
 									>
 										<i class="fas fa-user mr-2"></i>View Profile
 									</a>
@@ -286,6 +287,20 @@
 			<i class="fas fa-check-circle"></i>
 			<span id="toastMessage"></span>
 		</div>
+
+		<!-- Load Profile Modal -->
+		<div id="profileModalContainer"></div>
+		<script>
+			fetch("profile-modal.html")
+				.then((res) => res.text())
+				.then((html) => {
+					document.getElementById("profileModalContainer").innerHTML = html;
+					// Now load the JS
+					const script = document.createElement("script");
+					script.src = "../../js/bookkeeper/profile.js";
+					document.body.appendChild(script);
+				});
+		</script>
 
 		<!-- Print Specific Styles -->
 		<style>
