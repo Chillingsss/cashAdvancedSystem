@@ -1,6 +1,7 @@
 let allRequests = [];
 
 document.addEventListener("DOMContentLoaded", function () {
+
 	// Set default date filter to 'today'
 	const dateFilter = document.getElementById("dateFilter");
 	if (dateFilter) {
@@ -343,20 +344,46 @@ function handleRequestAction(requestId, action) {
 	}
 	const formData = new FormData();
 	formData.append("operation", operation);
-	formData.append("json", JSON.stringify({ req_id: requestId }));
+
+	// Retrieve userId again just in case, though it should be available from the top scope
+	const currentUser = getSecureSession("user");
+	const currentUserId = currentUser ? currentUser.user_id : null;
+
+	console.log(
+		`Handling action '${action}' for request ID: ${requestId}, User ID: ${currentUserId}`
+	); // Log values
+
+	if (!currentUserId) {
+		showToast("Error: User session not found. Please log in again.", "error");
+		console.error("User ID not found in handleRequestAction");
+		return; // Stop if no user ID
+	}
+
+	formData.append(
+		"json",
+		JSON.stringify({ req_id: requestId, user_id: currentUserId })
+	);
 
 	const completeBtn = document.querySelector(
 		`.complete-btn[data-id='${requestId}']`
 	);
 	if (completeBtn) completeBtn.disabled = true;
 
+	console.log("Sending request to bookkeeper.php with payload:", {
+		operation: operation,
+		req_id: requestId,
+		user_id: currentUserId,
+	}); // Log payload
+
 	axios
 		.post("http://localhost/cashAdvancedSystem/php/bookkeeper.php", formData)
 		.then((response) => {
+			console.log("Response from bookkeeper.php:", response.data); // Log response
 			if (response.data && response.data.success) {
 				showToast("Request completed successfully!", "success");
 				fetchBookkeeperRequests();
 				fetchBudgetStats();
+				fetchCompletedStats(); // Also refetch completed stats
 			} else {
 				showToast(
 					response.data.error || "Failed to complete request.",
@@ -366,6 +393,7 @@ function handleRequestAction(requestId, action) {
 			}
 		})
 		.catch((error) => {
+			console.error("Error during handleRequestAction:", error); // Log detailed error
 			showToast("An error occurred. Please try again.", "error");
 			if (completeBtn) completeBtn.disabled = false;
 		});
@@ -381,7 +409,19 @@ function updateDashboardStats(requests) {
 			approved++;
 		}
 	});
-	document.getElementById("pendingRequestsCount").textContent = pending;
-	document.getElementById("approvedRequestsCount").textContent = approved;
+
+	const pendingElement = document.getElementById("pendingRequestsCount");
+	if (pendingElement) {
+		pendingElement.textContent = pending;
+	} else {
+		console.warn("Element with ID 'pendingRequestsCount' not found.");
+	}
+
+	const approvedElement = document.getElementById("approvedRequestsCount");
+	if (approvedElement) {
+		approvedElement.textContent = approved;
+	} else {
+		console.warn("Element with ID 'approvedRequestsCount' not found.");
+	}
 	// completedCount and totalAdvanced are now set by fetchCompletedStats
 }

@@ -46,9 +46,10 @@ class Bookkeeper {
     $json = json_decode($json, true);
     try {
         $completedStatusId = 18; // adjust to your actual statusR_id for 'Completed'
-        $sql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_statusId, reqS_datetime) VALUES (:reqId, :statusId, NOW())";
+        $sql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_userId, reqS_statusId, reqS_datetime) VALUES (:reqId, :userId, :statusId, NOW())";
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':reqId', $json['req_id']);
+        $stmt->bindParam(':userId', $json['user_id']);
         $stmt->bindParam(':statusId', $completedStatusId);
         if ($stmt->execute()) {
             return json_encode(['success' => true]);
@@ -139,6 +140,98 @@ class Bookkeeper {
       'total_advanced' => floatval($result['total_advanced'] ?? 0)
     ]);
   }
+  
+  function getTransactionHistory() {
+    include "connection.php";
+    $sql = "SELECT a.reqS_datetime, e.user_firstname AS bookkeeper_firstname, e.user_lastname AS bookkeeper_lastname, c.statusR_name, d.req_budget, d.req_purpose, d.req_desc, b.user_firstname AS employee_firstname, b.user_lastname AS employee_lastname, f.cashM_name
+            FROM tblrequeststatus a
+            INNER JOIN tbluser e ON a.reqS_userId = e.user_id
+            INNER JOIN tblrequest d ON a.reqS_reqId = d.req_id
+            INNER JOIN tbluser b ON d.req_userId = b.user_id
+            INNER JOIN tblstatusrequest c ON a.reqS_statusId = c.statusR_id
+            INNER JOIN tblcashmethod f ON d.req_cashMethodId = f.cashM_id
+            WHERE a.reqS_statusId = 18
+            ORDER BY a.reqS_datetime DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute();
+    return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+  }
+
+  function getUserProfile($json)
+  {
+    include "connection.php";
+
+    $data = json_decode($json, true);
+    if (!isset($data['userId'])) {
+      return json_encode(['error' => 'User ID is required']);
+    }
+
+    $sql = "SELECT user_id, user_firstname, user_lastname, user_email, user_contactNumber, user_address, user_username, user_password FROM tbluser WHERE user_id = :userId";
+    $stmt = $conn->prepare($sql);
+    $stmt->bindParam(':userId', $data['userId']);
+    $stmt->execute();
+
+    $userProfile = $stmt->fetch(PDO::FETCH_ASSOC);
+    return json_encode($userProfile);
+  }
+
+  function editUserProfile($json)
+  {
+    include "connection.php";
+
+    $data = json_decode($json, true);
+    if (!isset($data['userId'])) {
+      return json_encode(['error' => 'User ID is required']);
+    }
+
+    try {
+      // First verify the current password
+      $verifySql = "SELECT user_password FROM tbluser WHERE user_id = :userId";
+      $verifyStmt = $conn->prepare($verifySql);
+      $verifyStmt->bindParam(':userId', $data['userId']);
+      $verifyStmt->execute();
+      
+      if ($verifyStmt->rowCount() === 0) {
+        return json_encode(['error' => 'User not found']);
+      }
+
+      $userData = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+      if (!password_verify($data['currentPassword'], $userData['user_password'])) {
+        return json_encode(['incorrectPassword' => 'Current password is incorrect']);
+      }
+
+      // Hash the new password if provided, otherwise keep the current one
+      $hashedPassword = isset($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : $userData['user_password'];
+
+      $sql = "UPDATE tbluser SET 
+              user_firstname = :firstname, 
+              user_lastname = :lastname, 
+              user_email = :email, 
+              user_phone = :phone, 
+              user_address = :address, 
+              user_username = :username, 
+              user_password = :password 
+              WHERE user_id = :userId";
+              
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':userId', $data['userId']);
+      $stmt->bindParam(':firstname', $data['firstname']);
+      $stmt->bindParam(':lastname', $data['lastname']);
+      $stmt->bindParam(':email', $data['email']);
+      $stmt->bindParam(':phone', $data['phone']);
+      $stmt->bindParam(':address', $data['address']);
+      $stmt->bindParam(':username', $data['username']);
+      $stmt->bindParam(':password', $hashedPassword);
+
+      if ($stmt->execute()) {
+        return json_encode(['success' => true]);
+      } else {
+        return json_encode(['error' => 'Failed to update profile']);
+      }
+    } catch (PDOException $e) {
+      return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
 
 }
 
@@ -165,6 +258,15 @@ switch ($operation) {
     break;
   case "getCompletedStats":
     echo $bookkeeper->getCompletedStats();
+    break;
+  case "getTransactionHistory":
+    echo $bookkeeper->getTransactionHistory();
+    break;
+  case "getUserProfile":
+    echo $bookkeeper->getUserProfile($json);
+    break;
+  case "editUserProfile":
+    echo $bookkeeper->editUserProfile($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

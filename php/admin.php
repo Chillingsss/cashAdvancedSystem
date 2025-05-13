@@ -267,12 +267,13 @@ class Admin {
     $json = json_decode($json, true);
     try {
         $approvedStatusId = 19; // adjust if needed
-        $sql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_statusId, reqS_datetime) VALUES (:reqId, :statusId, NOW())";
+        $sql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_userId, reqS_statusId, reqS_datetime) VALUES (:reqId, :userId, :statusId, NOW())";
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':reqId', $json['req_id']);
+        $stmt->bindParam(':userId', $json['user_id']);
         $stmt->bindParam(':statusId', $approvedStatusId);
         if ($stmt->execute()) {
-            return json_encode(['success' => true]);
+            return json_encode(['success' => 'Request approved successfully!']);
         } else {
             return json_encode(['error' => 'Failed to approve request']);
         }
@@ -287,12 +288,13 @@ class Admin {
     $json = json_decode($json, true);
     try {
         $rejectedStatusId = 16; // adjust if needed
-        $sql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_statusId, reqS_datetime) VALUES (:reqId, :statusId, NOW())";
+        $sql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_userId, reqS_statusId, reqS_datetime) VALUES (:reqId, :userId, :statusId, NOW())";
         $stmt = $conn->prepare($sql);
         $stmt->bindParam(':reqId', $json['req_id']);
+        $stmt->bindParam(':userId', $json['user_id']);
         $stmt->bindParam(':statusId', $rejectedStatusId);
         if ($stmt->execute()) {
-            return json_encode(['success' => true]);
+            return json_encode(['success' => 'Request rejected successfully!']);
         } else {
             return json_encode(['error' => 'Failed to reject request']);
         }

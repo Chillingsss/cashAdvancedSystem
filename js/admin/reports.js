@@ -58,6 +58,15 @@ document.addEventListener("DOMContentLoaded", function () {
 			renderFilteredAndSortedDetailedReport
 		);
 	}
+
+	// Add event listeners for new print buttons
+	const printButtons = document.querySelectorAll(".print-button");
+	printButtons.forEach((button) => {
+		button.addEventListener("click", function () {
+			const sectionId = this.dataset.sectionId;
+			printReportSection(sectionId);
+		});
+	});
 });
 
 function fetchReportData() {
@@ -1411,4 +1420,54 @@ function filterTransactions(userId) {
 	};
 
 	loadEmployeeTransactions(userId, filters);
+}
+
+function printReportSection(sectionId) {
+	const sectionName = sectionId.replace("Section", ""); // e.g. monthlyReport, employeeLimits, yearlyReport
+	document.body.classList.add(`printing-${sectionId}`);
+
+	// Optional: Add a title or more context dynamically if needed, specific to the section
+	// For example, for monthly reports, you might want to show the selected month.
+	let printTitleText = "Report";
+	if (sectionId === "monthlyReportSection") {
+		const selectedMonth = document.getElementById("monthSelector").value;
+		const [year, month] = selectedMonth.split("-");
+		const date = new Date(year, month - 1);
+		const monthYearString = date.toLocaleString("default", {
+			month: "long",
+			year: "numeric",
+		});
+		printTitleText = `Monthly Disbursement Report - ${monthYearString}`;
+	} else if (sectionId === "employeeLimitsSection") {
+		printTitleText = "Employee Credit Limits Report";
+	} else if (sectionId === "yearlyReportSection") {
+		const selectedYear = document.getElementById("yearSelector").value;
+		printTitleText = `Year-End Financial Summary - ${selectedYear}`;
+	}
+
+	// Add a temporary title for printing
+	const printTitleElement = document.createElement("h1");
+	printTitleElement.id = "printPageTitle";
+	printTitleElement.className = "text-center text-2xl font-bold my-4"; // Style as needed
+	printTitleElement.textContent = printTitleText;
+
+	const sectionElement = document.getElementById(sectionId);
+	if (sectionElement) {
+		sectionElement.insertBefore(printTitleElement, sectionElement.firstChild);
+	}
+
+	// Give browser time to apply classes and styles
+	setTimeout(() => {
+		window.print();
+	}, 100);
+
+	// Clean up after printing (or if cancelled)
+	// 'afterprint' event is not consistently reliable across all browsers for cleanup,
+	// especially for quick actions. A timeout is a common workaround.
+	setTimeout(() => {
+		document.body.classList.remove(`printing-${sectionId}`);
+		if (printTitleElement && printTitleElement.parentNode) {
+			printTitleElement.parentNode.removeChild(printTitleElement);
+		}
+	}, 500); // Adjust timeout as needed
 }

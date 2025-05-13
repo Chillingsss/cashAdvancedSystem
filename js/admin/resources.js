@@ -81,6 +81,71 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	}
 
+	// --- Generic Delete Confirmation Modal ---
+	function showDeleteConfirmModal(itemType, itemId, itemName, deleteFunction) {
+		const modal = document.getElementById("deleteConfirmResourceModal");
+		const modalContent = modal.querySelector(".modal-content");
+		const titleElement = document.getElementById("deleteConfirmTitle");
+		const messageElement = document.getElementById("deleteConfirmMessage");
+		const confirmBtn = document.getElementById("confirmResourceDelete");
+		const cancelBtn = document.getElementById("cancelResourceDelete");
+
+		titleElement.textContent = `Delete ${itemType}`;
+		messageElement.textContent = `Are you sure you want to delete the ${itemType.toLowerCase()} "${itemName}"? This action cannot be undone.`;
+
+		modal.classList.remove("hidden");
+		modal.classList.add("flex");
+		setTimeout(() => {
+			modal.classList.add("opacity-100");
+			modalContent.classList.add("scale-100");
+		}, 10);
+
+		const handleConfirm = () => {
+			deleteFunction(itemId); // Call the specific delete function
+			hideDeleteConfirmModal();
+		};
+
+		const handleCancel = () => {
+			hideDeleteConfirmModal();
+		};
+
+		// Clean up previous listeners before adding new ones
+		confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+		cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+		modal.replaceWith(modal.cloneNode(true)); // Re-clone modal to ensure its listeners are fresh
+
+		// Add new listeners
+		document
+			.getElementById("confirmResourceDelete")
+			.addEventListener("click", handleConfirm);
+		document
+			.getElementById("cancelResourceDelete")
+			.addEventListener("click", handleCancel);
+		document
+			.getElementById("deleteConfirmResourceModal")
+			.addEventListener("click", (e) => {
+				if (e.target === e.currentTarget) {
+					// Check if the click is on the overlay itself
+					hideDeleteConfirmModal();
+				}
+			});
+	}
+
+	function hideDeleteConfirmModal() {
+		const modal = document.getElementById("deleteConfirmResourceModal");
+		const modalContent = modal.querySelector(".modal-content");
+
+		if (modal) {
+			modal.classList.remove("opacity-100");
+			modalContent.classList.remove("scale-100");
+			modalContent.classList.add("scale-95");
+			setTimeout(() => {
+				modal.classList.add("hidden");
+				modal.classList.remove("flex");
+			}, 250); // Match transition duration
+		}
+	}
+
 	// --- Cash Methods ---
 	async function fetchCashMethods() {
 		try {
@@ -154,9 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			btn.addEventListener("click", (e) => {
 				const id = e.currentTarget.dataset.id;
 				const name = e.currentTarget.dataset.name;
-				if (confirm(`Are you sure you want to delete cash method: ${name}?`)) {
-					deleteCashMethod(id);
-				}
+				showDeleteConfirmModal("Cash Method", id, name, deleteCashMethod);
 			});
 		});
 	}
@@ -342,11 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			btn.addEventListener("click", (e) => {
 				const id = e.currentTarget.dataset.id;
 				const name = e.currentTarget.dataset.name;
-				if (
-					confirm(`Are you sure you want to delete status request: ${name}?`)
-				) {
-					deleteStatusRequest(id);
-				}
+				showDeleteConfirmModal("Status Request", id, name, deleteStatusRequest);
 			});
 		});
 	}
@@ -552,9 +611,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			btn.addEventListener("click", (e) => {
 				const id = e.currentTarget.dataset.id;
 				const name = e.currentTarget.dataset.name;
-				if (confirm(`Are you sure you want to delete user level: ${name}?`)) {
-					deleteUserLevel(id);
-				}
+				showDeleteConfirmModal("User Level", id, name, deleteUserLevel);
 			});
 		});
 	}

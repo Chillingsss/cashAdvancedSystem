@@ -72,12 +72,25 @@ function fetchApprovedRequestsCount() {
 					approvedRequests = [];
 				}
 			}
-			document.getElementById("approvedRequestsCount").textContent =
-				approvedRequests.length;
+			const approvedElement = document.getElementById("approvedRequestsCount");
+			if (approvedElement) {
+				approvedElement.textContent = approvedRequests.length;
+			} else {
+				console.warn(
+					"Element with ID 'approvedRequestsCount' not found during fetch."
+				);
+			}
 		})
 		.catch((error) => {
 			console.error("Error fetching approved requests:", error);
-			document.getElementById("approvedRequestsCount").textContent = 0;
+			const approvedElement = document.getElementById("approvedRequestsCount");
+			if (approvedElement) {
+				approvedElement.textContent = 0;
+			} else {
+				console.warn(
+					"Element with ID 'approvedRequestsCount' not found in fetch catch."
+				);
+			}
 		});
 }
 
@@ -116,12 +129,23 @@ function fetchBudgetStats() {
 					}
 					const availableMoney =
 						(totalBudgeted.total_budgeted || 0) - (usedMoney.used_money || 0);
-					document.getElementById("totalBudgeted").textContent =
-						"₱" + (totalBudgeted.total_budgeted || 0).toLocaleString();
-					document.getElementById("usedMoney").textContent =
-						"₱" + (usedMoney.used_money || 0).toLocaleString();
-					document.getElementById("availableMoney").textContent =
-						"₱" + availableMoney.toLocaleString();
+					const totalBudgetedEl = document.getElementById("totalBudgeted");
+					if (totalBudgetedEl)
+						totalBudgetedEl.textContent =
+							"₱" + (totalBudgeted.total_budgeted || 0).toLocaleString();
+					else console.warn("Element with ID 'totalBudgeted' not found.");
+
+					const usedMoneyEl = document.getElementById("usedMoney");
+					if (usedMoneyEl)
+						usedMoneyEl.textContent =
+							"₱" + (usedMoney.used_money || 0).toLocaleString();
+					else console.warn("Element with ID 'usedMoney' not found.");
+
+					const availableMoneyEl = document.getElementById("availableMoney");
+					if (availableMoneyEl)
+						availableMoneyEl.textContent =
+							"₱" + availableMoney.toLocaleString();
+					else console.warn("Element with ID 'availableMoney' not found.");
 				});
 		});
 }
@@ -140,10 +164,16 @@ function fetchCompletedStats() {
 					stats = { completed_count: 0, total_advanced: 0 };
 				}
 			}
-			document.getElementById("completedCount").textContent =
-				stats.completed_count;
-			document.getElementById("totalAdvanced").textContent =
-				"₱" + (stats.total_advanced || 0).toLocaleString();
+			const completedCountEl = document.getElementById("completedCount");
+			if (completedCountEl)
+				completedCountEl.textContent = stats.completed_count;
+			else console.warn("Element with ID 'completedCount' not found.");
+
+			const totalAdvancedEl = document.getElementById("totalAdvanced");
+			if (totalAdvancedEl)
+				totalAdvancedEl.textContent =
+					"₱" + (stats.total_advanced || 0).toLocaleString();
+			else console.warn("Element with ID 'totalAdvanced' not found.");
 		});
 }
 
@@ -370,7 +400,21 @@ function handleRequestAction(requestId, action) {
 	const operation = action === "approve" ? "approveRequest" : "rejectRequest";
 	const formData = new FormData();
 	formData.append("operation", operation);
-	formData.append("json", JSON.stringify({ req_id: requestId }));
+
+	// Get userId reliably inside the function
+	const user = getSecureSession("user");
+	const currentUserId = user ? user.user_id : null;
+
+	if (!currentUserId) {
+		showToast("Error: Could not identify user. Please log in again.", "error");
+		console.error("User ID not found in handleRequestAction");
+		return; // Stop execution if user ID is missing
+	}
+
+	formData.append(
+		"json",
+		JSON.stringify({ req_id: requestId, user_id: currentUserId })
+	);
 
 	// Optionally, disable buttons while processing
 	const approveBtn = document.querySelector(
@@ -416,7 +460,26 @@ function updateDashboardStats(requests) {
 			approved++;
 		}
 	});
-	document.getElementById("pendingRequestsCount").textContent = pending;
-	document.getElementById("approvedRequestsCount").textContent = approved;
+	const pendingElement = document.getElementById("pendingRequestsCount");
+	if (pendingElement) {
+		pendingElement.textContent = pending;
+	} else {
+		console.warn(
+			"Element with ID 'pendingRequestsCount' not found in updateDashboardStats."
+		);
+	}
+
+	// Note: approvedRequestsCount is now primarily updated by fetchApprovedRequestsCount
+	// However, we can still update it here based on the locally filtered list if needed for responsiveness,
+	// or decide to rely solely on fetchApprovedRequestsCount for its specific value.
+	// For now, let's keep this update for consistency with local filtering if that's the intent.
+	const approvedElement = document.getElementById("approvedRequestsCount");
+	if (approvedElement) {
+		approvedElement.textContent = approved; // This updates based on the filtered list
+	} else {
+		console.warn(
+			"Element with ID 'approvedRequestsCount' not found in updateDashboardStats."
+		);
+	}
 	// completedCount and totalAdvanced are now set by fetchCompletedStats
 }

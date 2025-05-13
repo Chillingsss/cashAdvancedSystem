@@ -267,73 +267,24 @@ function updateYearlySummaryCards(yearRequests) {
 }
 
 function renderMonthlyTotals(yearRequests, year) {
-	console.log("Yearly Summary: Rendering monthly totals chart");
-	const chartContainer = document.getElementById("monthlyTotalsChart");
-	if (!chartContainer) {
-		console.error("Yearly Summary: Monthly totals chart container not found");
+	console.log("Yearly Summary: Rendering monthly totals chart for year", year);
+	const monthlyTotalsCtx = document
+		.getElementById("monthlyTotalsChart")
+		?.getContext("2d");
+
+	if (!monthlyTotalsCtx) {
+		console.error(
+			"Yearly Summary: Monthly totals chart canvas element not found!"
+		);
 		return;
 	}
 
-	// Group by month
-	const monthly = Array.from({ length: 12 }, () => ({
-		total: 0,
-		approved: 0,
-		completed: 0,
-		disbursed: 0,
-	}));
-
-	// Create a map to organize requests by month and ID
-	const monthlyRequestMap = Array.from({ length: 12 }, () => new Map());
-
-	yearRequests.forEach((req) => {
-		try {
-			const d = new Date(req.reqS_datetime);
-			const m = d.getMonth();
-			const reqId = req.req_id;
-
-			// Get or create an entry for this request in this month
-			const currentEntry = monthlyRequestMap[m].get(reqId) || {
-				latestDate: new Date(0),
-				status: "",
-				budget: 0,
-			};
-
-			// Only update if this status change is newer
-			const reqDate = new Date(req.reqS_datetime);
-			if (reqDate > currentEntry.latestDate) {
-				currentEntry.latestDate = reqDate;
-				currentEntry.status = req.statusR_name.toLowerCase();
-				currentEntry.budget = Number(req.req_budget || 0);
-
-				// Update in the map
-				monthlyRequestMap[m].set(reqId, currentEntry);
-			}
-		} catch (e) {
-			console.error(
-				"Yearly Summary: Error processing request for monthly chart",
-				req,
-				e
-			);
-		}
-	});
-
-	// Process the monthly data
-	for (let m = 0; m < 12; m++) {
-		const monthData = monthlyRequestMap[m];
-		monthly[m].total = monthData.size;
-
-		monthData.forEach((entry) => {
-			if (entry.status === "approved") {
-				monthly[m].approved++;
-			}
-			if (entry.status === "completed") {
-				monthly[m].completed++;
-				monthly[m].disbursed += entry.budget;
-			}
-		});
+	if (monthlyTotalsChart) {
+		monthlyTotalsChart.destroy();
+		console.log("Yearly Summary: Destroyed existing monthly totals chart");
 	}
 
-	const labels = [
+	const months = [
 		"Jan",
 		"Feb",
 		"Mar",
@@ -348,84 +299,251 @@ function renderMonthlyTotals(yearRequests, year) {
 		"Dec",
 	];
 
-	// Destroy existing chart
-	if (monthlyTotalsChart) {
-		monthlyTotalsChart.destroy();
+	// Initialize data for each month
+	const monthlyData = months.map(() => ({
+		totalRequests: 0,
+		approved: 0,
+		completed: 0,
+		disbursed: 0,
+		// Use sets to count unique requests for counts
+		_totalReqSet: new Set(),
+		_approvedReqSet: new Set(),
+		_completedReqSet: new Set(),
+	}));
+
+	if (Array.isArray(yearRequests)) {
+		yearRequests.forEach((req) => {
+			try {
+				const reqDate = new Date(req.reqS_datetime);
+				const monthIndex = reqDate.getMonth(); // 0-11
+
+				if (monthIndex >= 0 && monthIndex < 12) {
+					const status = req.statusR_name ? req.statusR_name.toLowerCase() : "";
+
+					// Count unique request IDs for totals, approved, and completed
+					monthlyData[monthIndex]._totalReqSet.add(req.req_id);
+
+					if (status === "approved") {
+						monthlyData[monthIndex]._approvedReqSet.add(req.req_id);
+					}
+					if (status === "completed") {
+						monthlyData[monthIndex]._completedReqSet.add(req.req_id);
+						monthlyData[monthIndex].disbursed += Number(req.req_budget || 0);
+					}
+				}
+			} catch (e) {
+				console.error(
+					"Yearly Summary: Error processing request date for monthly totals",
+					req.reqS_datetime,
+					e
+				);
+			}
+		});
 	}
 
-	// Create new chart
-	monthlyTotalsChart = new Chart(chartContainer.getContext("2d"), {
-		type: "bar",
-		data: {
-			labels,
-			datasets: [
-				{
-					label: "Total Requests",
-					data: monthly.map((m) => m.total),
-					backgroundColor: "#8B1C23",
-					barPercentage: 0.7,
-					categoryPercentage: 0.8,
-				},
-				{
-					label: "Approved",
-					data: monthly.map((m) => m.approved),
-					backgroundColor: "#22C55E",
-					barPercentage: 0.7,
-					categoryPercentage: 0.8,
-				},
-				{
-					label: "Completed",
-					data: monthly.map((m) => m.completed),
-					backgroundColor: "#3B82F6",
-					barPercentage: 0.7,
-					categoryPercentage: 0.8,
-				},
-				{
-					label: "Disbursed (₱)",
-					data: monthly.map((m) => m.disbursed),
-					backgroundColor: "#F59E0B",
-					type: "line",
-					tension: 0.3,
-					fill: false,
-					borderWidth: 3,
-					yAxisID: "y1",
-				},
-			],
-		},
+	// Finalize counts from sets
+	monthlyData.forEach((month) => {
+		month.totalRequests = month._totalReqSet.size;
+		month.approved = month._approvedReqSet.size;
+		month.completed = month._completedReqSet.size;
+	});
+
+	const chartData = {
+		labels: months,
+		datasets: [
+			{
+				label: "Total Requests",
+				data: monthlyData.map((d) => d.totalRequests),
+				backgroundColor: "rgba(139, 28, 35, 0.7)", // Primary dark red
+				borderColor: "rgba(139, 28, 35, 1)",
+				borderWidth: 1,
+				yAxisID: "yRequests",
+				type: "bar",
+			},
+			{
+				label: "Approved",
+				data: monthlyData.map((d) => d.approved),
+				backgroundColor: "rgba(34, 197, 94, 0.7)", // Green
+				borderColor: "rgba(34, 197, 94, 1)",
+				borderWidth: 1,
+				yAxisID: "yRequests",
+				type: "bar",
+			},
+			{
+				label: "Completed",
+				data: monthlyData.map((d) => d.completed),
+				backgroundColor: "rgba(59, 130, 246, 0.7)", // Blue
+				borderColor: "rgba(59, 130, 246, 1)",
+				borderWidth: 1,
+				yAxisID: "yRequests",
+				type: "bar",
+			},
+			{
+				label: "Disbursed (₱)",
+				data: monthlyData.map((d) => d.disbursed),
+				backgroundColor: "rgba(255, 159, 64, 0.7)", // Orange
+				borderColor: "rgba(255, 159, 64, 1)",
+				borderWidth: 2,
+				yAxisID: "yDisbursed",
+				type: "line", // Changed to line for differentiation
+				fill: false,
+				tension: 0.1,
+				pointRadius: 5,
+				pointHoverRadius: 7,
+			},
+		],
+	};
+
+	monthlyTotalsChart = new Chart(monthlyTotalsCtx, {
+		// Type is defined per dataset now
+		data: chartData,
 		options: {
-			maintainAspectRatio: false,
 			responsive: true,
+			maintainAspectRatio: false,
+			interaction: {
+				mode: "index",
+				intersect: false,
+			},
+			stacked: false, // Keep false for combo chart
 			plugins: {
-				legend: { position: "top" },
+				legend: {
+					position: "top",
+				},
 				tooltip: {
 					callbacks: {
 						label: function (context) {
-							if (context.datasetIndex === 3) {
-								return `${
-									context.dataset.label
-								}: ₱${context.raw.toLocaleString()}`;
+							let label = context.dataset.label || "";
+							if (label) {
+								label += ": ";
 							}
-							return `${context.dataset.label}: ${context.raw}`;
+							if (context.parsed.y !== null) {
+								if (context.dataset.yAxisID === "yDisbursed") {
+									label += new Intl.NumberFormat("en-PH", {
+										style: "currency",
+										currency: "PHP",
+									}).format(context.parsed.y);
+								} else {
+									label += context.parsed.y;
+								}
+							}
+							return label;
 						},
 					},
 				},
 			},
 			scales: {
-				y: {
-					beginAtZero: true,
-					title: { display: true, text: "Count" },
+				x: {
+					title: {
+						display: true,
+						text: "Month",
+					},
 				},
-				y1: {
-					beginAtZero: true,
+				yRequests: {
+					// Left Y-axis for counts
+					type: "linear",
+					display: true,
+					position: "left",
+					title: {
+						display: true,
+						text: "Count",
+					},
+					ticks: {
+						precision: 0, // Ensure whole numbers for counts
+					},
+					grid: {
+						drawOnChartArea: false, // Only draw grid for this axis if needed, or remove if too cluttered
+					},
+				},
+				yDisbursed: {
+					// Right Y-axis for disbursed amount
+					type: "linear",
+					display: true,
 					position: "right",
-					title: { display: true, text: "Disbursed (₱)" },
-					grid: { drawOnChartArea: false },
+					title: {
+						display: true,
+						text: "Disbursed (₱)",
+					},
+					ticks: {
+						callback: function (value, index, values) {
+							return new Intl.NumberFormat("en-PH", {
+								style: "currency",
+								currency: "PHP",
+								minimumFractionDigits: 0,
+								maximumFractionDigits: 0,
+							}).format(value);
+						},
+					},
+					// Ensuring grid lines from this axis don't overlap with the primary one
+					grid: {
+						drawOnChartArea: true, // Show grid lines for this axis
+						// color: 'rgba(0,0,0,0.05)', // Lighter color for secondary grid if needed
+					},
 				},
 			},
 		},
 	});
-
 	console.log("Yearly Summary: Monthly totals chart rendered");
+
+	// Render details table below the chart
+	const detailsContainer = document.getElementById("monthlyTotalsDetails");
+	if (detailsContainer) {
+		let tableHtml = `
+			<div class="overflow-x-auto max-h-72 overflow-y-auto mt-4">
+				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow">
+					<thead class="bg-gray-50 dark:bg-gray-700">
+						<tr>
+							<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Month</th>
+							<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Total Requests</th>
+							<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Approved</th>
+							<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Completed</th>
+							<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Disbursed (₱)</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+		`;
+		months.forEach((month, i) => {
+			tableHtml += `
+				<tr>
+					<td class="px-4 py-2 font-semibold text-gray-700 dark:text-gray-200">${month}</td>
+					<td class="px-4 py-2 text-gray-600 dark:text-gray-300">${
+						monthlyData[i].totalRequests
+					}</td>
+					<td class="px-4 py-2 text-green-600 dark:text-green-400">${
+						monthlyData[i].approved
+					}</td>
+					<td class="px-4 py-2 text-blue-600 dark:text-blue-400">${
+						monthlyData[i].completed
+					}</td>
+					<td class="px-4 py-2 text-yellow-700 dark:text-yellow-400">₱${monthlyData[
+						i
+					].disbursed.toLocaleString()}</td>
+				</tr>
+			`;
+		});
+		// Add total row
+		const totalRequestsSum = monthlyData.reduce(
+			(sum, d) => sum + d.totalRequests,
+			0
+		);
+		const approvedSum = monthlyData.reduce((sum, d) => sum + d.approved, 0);
+		const completedSum = monthlyData.reduce((sum, d) => sum + d.completed, 0);
+		const disbursedSum = monthlyData.reduce((sum, d) => sum + d.disbursed, 0);
+		tableHtml += `
+			<tr class="bg-gray-100 dark:bg-gray-700 font-bold sticky bottom-0 z-10">
+				<td class="px-4 py-2 text-gray-900 dark:text-gray-100">Total</td>
+				<td class="px-4 py-2 text-gray-900 dark:text-gray-100">${totalRequestsSum}</td>
+				<td class="px-4 py-2 text-green-700 dark:text-green-300">${approvedSum}</td>
+				<td class="px-4 py-2 text-blue-700 dark:text-blue-300">${completedSum}</td>
+				<td class="px-4 py-2 text-yellow-900 dark:text-yellow-200">₱${disbursedSum.toLocaleString()}</td>
+			</tr>
+		`;
+		tableHtml += `
+					</tbody>
+				</table>
+			</div>
+		`;
+		detailsContainer.innerHTML = tableHtml;
+	}
 }
 
 function renderTopWorkers(yearRequests) {

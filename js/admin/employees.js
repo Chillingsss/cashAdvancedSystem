@@ -214,13 +214,23 @@ function editUser(userId) {
 
 // Function to handle user deletion
 async function deleteUser(userId) {
-	// TODO: Implement delete user functionality
-	// console.log("Delete user:", userId);
-	if (
-		confirm(
-			"Are you sure you want to delete this user? This action cannot be undone."
-		)
-	) {
+	showDeleteConfirmModal(userId);
+}
+
+// Function to show delete confirmation modal
+function showDeleteConfirmModal(userId) {
+	const modal = document.getElementById("deleteConfirmModal");
+	modal.classList.remove("hidden");
+	modal.classList.add("flex");
+
+	// Store the userId to be deleted
+	modal.dataset.userId = userId;
+
+	// Add event listeners for the buttons
+	const confirmBtn = document.getElementById("confirmDelete");
+	const cancelBtn = document.getElementById("cancelDelete");
+
+	const handleConfirm = async () => {
 		try {
 			const requestData = new FormData();
 			requestData.append("operation", "deleteUser");
@@ -243,8 +253,41 @@ async function deleteUser(userId) {
 		} catch (error) {
 			console.error("Error deleting user:", error);
 			showToast("An unexpected error occurred. Please try again.", "error");
+		} finally {
+			hideDeleteConfirmModal();
 		}
-	}
+	};
+
+	const handleCancel = () => {
+		hideDeleteConfirmModal();
+	};
+
+	// Remove any existing event listeners
+	confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+	cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+
+	// Add new event listeners
+	document
+		.getElementById("confirmDelete")
+		.addEventListener("click", handleConfirm);
+	document
+		.getElementById("cancelDelete")
+		.addEventListener("click", handleCancel);
+
+	// Close modal when clicking outside
+	modal.addEventListener("click", (e) => {
+		if (e.target === modal) {
+			hideDeleteConfirmModal();
+		}
+	});
+}
+
+// Function to hide delete confirmation modal
+function hideDeleteConfirmModal() {
+	const modal = document.getElementById("deleteConfirmModal");
+	modal.classList.add("hidden");
+	modal.classList.remove("flex");
+	delete modal.dataset.userId;
 }
 
 // Function to show the add user modal (now also used for editing)
