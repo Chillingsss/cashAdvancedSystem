@@ -311,11 +311,21 @@ function renderAdminRequests(requests) {
     ${
 			isPending
 				? `
+      <div class="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-sm text-gray-600 dark:text-gray-300">Employee's Available Limit:</span>
+          <span class="text-sm font-medium" id="availableLimit-${req.req_id}">Loading...</span>
+        </div>
+        <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+          <div class="h-2.5 rounded-full" id="limitBar-${req.req_id}" style="width: 0%"></div>
+        </div>
+        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400" id="limitWarning-${req.req_id}"></div>
+      </div>
       <div class="flex gap-2 mt-4">
-        <button class="approve-btn flex-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition font-medium py-2 rounded-lg" data-id="${req.req_id}">Approve</button>
+        <button class="approve-btn flex-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-600 hover:text-white transition font-medium py-2 rounded-lg" data-id="${req.req_id}" data-budget="${req.req_budget}" data-user-id="${req.req_userId}">Approve</button>
         <button class="reject-btn flex-1 bg-red-50 text-red-700 border border-red-200 hover:bg-red-600 hover:text-white transition font-medium py-2 rounded-lg" data-id="${req.req_id}">Reject</button>
       </div>
-      `
+    `
 				: ""
 		}
   </div>
@@ -333,6 +343,14 @@ function renderAdminRequests(requests) {
 		btn.addEventListener("click", function () {
 			handleRequestAction(this.dataset.id, "reject");
 		});
+	});
+
+	// Load available limits for each pending request
+	document.querySelectorAll(".approve-btn").forEach((btn) => {
+		const userId = btn.dataset.userId;
+		const requestId = btn.dataset.id;
+		const requestBudget = Number(btn.dataset.budget);
+		loadEmployeeLimit(userId, requestId, requestBudget);
 	});
 }
 
@@ -397,6 +415,53 @@ function showToast(message, type = "success") {
 }
 
 function handleRequestAction(requestId, action) {
+	if (action === "approve") {
+		// Get the request details
+		const request = allRequests.find(
+			(req) => String(req.req_id) === String(requestId)
+		);
+		if (!request) {
+			showToast("Error: Request not found", "error");
+			return;
+		}
+
+		// Check employee's available limit before approving
+		const formData = new FormData();
+		formData.append("operation", "getUserAvailableLimit");
+		formData.append("json", JSON.stringify({ userId: request.req_userId }));
+
+		axios
+			.post("http://localhost/cashAdvancedSystem/php/admin.php", formData)
+			.then((response) => {
+				if (response.data && response.data.available_limit !== undefined) {
+					const availableLimit = Number(response.data.available_limit);
+					const requestBudget = Number(request.req_budget);
+
+					if (requestBudget > availableLimit) {
+						showToast(
+							"Cannot approve: Request exceeds employee's available limit (considering already approved requests)",
+							"error"
+						);
+						return;
+					}
+
+					// If limit check passes, proceed with approval
+					proceedWithRequestAction(requestId, action);
+				} else {
+					showToast("Error: Could not verify employee's limit", "error");
+				}
+			})
+			.catch((error) => {
+				console.error("Error checking employee limit:", error);
+				showToast("Error checking employee's limit", "error");
+			});
+	} else {
+		// For reject action, proceed directly
+		proceedWithRequestAction(requestId, action);
+	}
+}
+
+function proceedWithRequestAction(requestId, action) {
 	const operation = action === "approve" ? "approveRequest" : "rejectRequest";
 	const formData = new FormData();
 	formData.append("operation", operation);
@@ -408,7 +473,7 @@ function handleRequestAction(requestId, action) {
 	if (!currentUserId) {
 		showToast("Error: Could not identify user. Please log in again.", "error");
 		console.error("User ID not found in handleRequestAction");
-		return; // Stop execution if user ID is missing
+		return;
 	}
 
 	formData.append(
@@ -482,4 +547,67 @@ function updateDashboardStats(requests) {
 		);
 	}
 	// completedCount and totalAdvanced are now set by fetchCompletedStats
+}
+
+// Add new function to load employee limit
+function loadEmployeeLimit(userId, requestId, requestBudget) {
+	const formData = new FormData();
+	formData.append("operation", "getUserAvailableLimit");
+	formData.append("json", JSON.stringify({ userId: userId }));
+
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/admin.php", formData)
+		.then((response) => {
+			if (response.data && response.data.available_limit !== undefined) {
+				const availableLimit = Number(response.data.available_limit);
+				const limitElement = document.getElementById(
+					`availableLimit-${requestId}`
+				);
+				const limitBar = document.getElementById(`limitBar-${requestId}`);
+				const limitWarning = document.getElementById(
+					`limitWarning-${requestId}`
+				);
+				const approveBtn = document.querySelector(
+					`.approve-btn[data-id='${requestId}']`
+				);
+
+				if (limitElement) {
+					limitElement.textContent = `₱${availableLimit.toLocaleString()}`;
+				}
+
+				// Calculate percentage of limit that will be used
+				const percentageUsed = (requestBudget / availableLimit) * 100;
+				if (limitBar) {
+					limitBar.style.width = `${Math.min(percentageUsed, 100)}%`;
+
+					// Set color based on percentage
+					if (percentageUsed > 100) {
+						limitBar.className = "h-2.5 rounded-full bg-red-500";
+						limitWarning.textContent =
+							"Warning: This request exceeds the employee's available limit!";
+						limitWarning.className =
+							"mt-2 text-xs text-red-500 dark:text-red-400";
+						if (approveBtn) {
+							approveBtn.disabled = true;
+							approveBtn.classList.add("opacity-50", "cursor-not-allowed");
+						}
+					} else if (percentageUsed > 80) {
+						limitBar.className = "h-2.5 rounded-full bg-yellow-500";
+						limitWarning.textContent =
+							"Warning: This request will use most of the employee's available limit.";
+						limitWarning.className =
+							"mt-2 text-xs text-yellow-500 dark:text-yellow-400";
+					} else {
+						limitBar.className = "h-2.5 rounded-full bg-green-500";
+						limitWarning.textContent =
+							"Employee has sufficient available limit.";
+						limitWarning.className =
+							"mt-2 text-xs text-green-500 dark:text-green-400";
+					}
+				}
+			}
+		})
+		.catch((error) => {
+			console.error("Error loading employee limit:", error);
+		});
 }

@@ -469,12 +469,12 @@ document.addEventListener("DOMContentLoaded", () => {
 	cancelAddUserBtn.addEventListener("click", hideAddUserModal);
 	addUserForm.addEventListener("submit", handleAddUser);
 
-	// Close modal when clicking outside
-	document.getElementById("addUserModal").addEventListener("click", (e) => {
-		if (e.target === e.currentTarget) {
-			hideAddUserModal();
-		}
-	});
+	// Remove the click outside event listener
+	// document.getElementById("addUserModal").addEventListener("click", (e) => {
+	//     if (e.target === e.currentTarget) {
+	//         hideAddUserModal();
+	//     }
+	// });
 });
 
 function showToast(message, type = "success") {

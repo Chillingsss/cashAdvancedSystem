@@ -242,9 +242,14 @@ function populateRequestTable(requests) {
 			case "completed":
 				statusClass = "bg-blue-100 text-blue-800";
 				break;
+			case "cancelled":
+				statusClass = "bg-gray-300 text-gray-700";
+				break;
 			default:
 				statusClass = "bg-gray-100 text-gray-800";
 		}
+
+		const isPending = (request.statusR_name || "").toLowerCase() === "pending";
 
 		const card = document.createElement("div");
 		card.className =
@@ -268,8 +273,30 @@ function populateRequestTable(requests) {
 				).toLocaleString()}</span>
 				<span class="text-xs text-gray-400">${formattedDate}</span>
 			</div>
+			${
+				isPending
+					? `<div class="flex gap-2 mt-3">
+					<button class="cancel-btn bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200" data-id="${request.req_id}">Cancel</button>
+					<button class="edit-btn bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200" data-id="${request.req_id}">Edit</button>
+				</div>`
+					: ""
+			}
 		`;
 		grid.appendChild(card);
+	});
+
+	// Add event listeners for cancel and edit buttons
+	document.querySelectorAll(".cancel-btn").forEach((btn) => {
+		btn.addEventListener("click", function () {
+			const requestId = this.dataset.id;
+			cancelRequestHandler(requestId);
+		});
+	});
+	document.querySelectorAll(".edit-btn").forEach((btn) => {
+		btn.addEventListener("click", function () {
+			const requestId = this.dataset.id;
+			editRequestHandler(requestId);
+		});
 	});
 }
 
@@ -642,4 +669,156 @@ function applyFiltersAndRender() {
 
 	populateRequestTable(filtered);
 	updateDashboardStats(filtered);
+}
+
+function cancelRequestHandler(requestId) {
+	const user = getSecureSession("user");
+	if (!user) {
+		showToast("You must be logged in to cancel a request", "error");
+		return;
+	}
+	if (!confirm("Are you sure you want to cancel this request?")) return;
+	const formData = new FormData();
+	formData.append("operation", "cancelRequest");
+	formData.append(
+		"json",
+		JSON.stringify({ requestId: requestId, userId: user.user_id })
+	);
+	axios
+		.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+		.then((response) => {
+			if (response.data && response.data.success) {
+				showToast("Request cancelled successfully", "success");
+				loadRequestHistory();
+				loadUserAvailableLimit();
+			} else {
+				showToast(response.data.error || "Failed to cancel request", "error");
+			}
+		})
+		.catch((error) => {
+			console.error("Error cancelling request:", error);
+			showToast("An error occurred while cancelling your request", "error");
+		});
+}
+
+function editRequestHandler(requestId) {
+	const user = getSecureSession("user");
+	if (!user) {
+		showToast("You must be logged in to edit a request", "error");
+		return;
+	}
+	const request = allRequests.find(
+		(r) => String(r.req_id) === String(requestId)
+	);
+	if (!request) {
+		showToast("Request not found", "error");
+		return;
+	}
+	// Get cash methods from session storage
+	const cashMethods = getSecureSession("cashMethods") || [];
+	const cashMethodOptions = cashMethods
+		.map(
+			(method) =>
+				`<option value="${method.cashM_id}" ${
+					method.cashM_id == request.req_cashMethodId ? "selected" : ""
+				}>${method.cashM_name}</option>`
+		)
+		.join("");
+	// Create and show edit modal
+	let modal = document.getElementById("editRequestModal");
+	if (modal) modal.remove();
+	modal = document.createElement("div");
+	modal.id = "editRequestModal";
+	modal.className =
+		"fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center";
+	modal.innerHTML = `
+		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full mx-4 overflow-hidden">
+			<div class="bg-primary p-4 text-white flex justify-between items-center">
+				<h3 class="text-lg font-semibold">Edit Cash Advance Request</h3>
+				<button id="closeEditModal" class="text-white hover:text-gray-200">
+					<i class="fas fa-times"></i>
+				</button>
+			</div>
+			<form id="editRequestForm" class="p-6">
+				<div class="mb-4">
+					<label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="editPurpose">
+						Purpose
+					</label>
+					<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+						id="editPurpose" type="text" value="${request.req_purpose}" required>
+				</div>
+				<div class="mb-4">
+					<label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="editDesc">
+						Description
+					</label>
+					<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+						id="editDesc" type="text" value="${request.req_desc || ""}">
+				</div>
+				<div class="mb-4">
+					<label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="editBudget">
+						Amount (₱)
+					</label>
+					<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+						id="editBudget" type="number" value="${request.req_budget}" min="1" required>
+				</div>
+				<div class="mb-6">
+					<label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="editCashMethodId">
+						Cash Method
+					</label>
+					<select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+						id="editCashMethodId" required>
+						${cashMethodOptions}
+					</select>
+				</div>
+				<div class="flex items-center justify-between">
+					<button class="bg-primary hover:bg-secondary text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full" 
+						type="submit">
+						Save Changes
+					</button>
+				</div>
+			</form>
+		</div>
+	`;
+	document.body.appendChild(modal);
+	document.getElementById("closeEditModal").onclick = () => modal.remove();
+	document.getElementById("editRequestForm").onsubmit = function (e) {
+		e.preventDefault();
+		const purpose = document.getElementById("editPurpose").value;
+		const desc = document.getElementById("editDesc").value;
+		const budget = Number(document.getElementById("editBudget").value);
+		const cashMethodId = document.getElementById("editCashMethodId").value;
+		if (!purpose || !budget || !cashMethodId) {
+			showToast("All fields are required", "error");
+			return;
+		}
+		const formData = new FormData();
+		formData.append("operation", "editRequest");
+		formData.append(
+			"json",
+			JSON.stringify({
+				requestId: request.req_id,
+				userId: user.user_id,
+				purpose,
+				desc,
+				budget,
+				cashMethodId,
+			})
+		);
+		axios
+			.post("http://localhost/cashAdvancedSystem/php/employee.php", formData)
+			.then((response) => {
+				if (response.data && response.data.success) {
+					showToast("Request updated successfully", "success");
+					modal.remove();
+					loadRequestHistory();
+					loadUserAvailableLimit();
+				} else {
+					showToast(response.data.error || "Failed to update request", "error");
+				}
+			})
+			.catch((error) => {
+				console.error("Error updating request:", error);
+				showToast("An error occurred while updating your request", "error");
+			});
+	};
 }

@@ -350,6 +350,87 @@ class Employee {
       return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
     }
   }
+
+  function cancelRequest($json) {
+    include "connection.php";
+    $data = json_decode($json, true);
+    if (!isset($data['requestId']) || !isset($data['userId'])) {
+      return json_encode(['error' => 'Request ID and User ID are required']);
+    }
+    try {
+      // Check if the latest status is still Pending
+      $sql = "SELECT c.statusR_name FROM tblrequeststatus b
+              INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+              WHERE b.reqS_reqId = :requestId
+              ORDER BY b.reqS_id DESC LIMIT 1";
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':requestId', $data['requestId']);
+      $stmt->execute();
+      $status = $stmt->fetch(PDO::FETCH_ASSOC);
+      if (!$status || strtolower($status['statusR_name']) !== 'pending') {
+        return json_encode(['error' => 'Only pending requests can be cancelled']);
+      }
+      // Get the statusR_id for Cancelled
+      $statusSql = "SELECT statusR_id FROM tblstatusrequest WHERE statusR_name = 'Cancelled' LIMIT 1";
+      $statusStmt = $conn->prepare($statusSql);
+      $statusStmt->execute();
+      $statusResult = $statusStmt->fetch(PDO::FETCH_ASSOC);
+      if (!$statusResult) {
+        return json_encode(['error' => 'Cancelled status not found in status request table']);
+      }
+      $cancelledStatusId = $statusResult['statusR_id'];
+      // Insert new status
+      $insertSql = "INSERT INTO tblrequeststatus (reqS_reqId, reqS_statusId, reqS_datetime) VALUES (:requestId, :statusId, NOW())";
+      $insertStmt = $conn->prepare($insertSql);
+      $insertStmt->bindParam(':requestId', $data['requestId']);
+      $insertStmt->bindParam(':statusId', $cancelledStatusId);
+      if ($insertStmt->execute()) {
+        return json_encode(['success' => true]);
+      } else {
+        return json_encode(['error' => 'Failed to cancel request']);
+      }
+    } catch (PDOException $e) {
+      return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
+
+  function editRequest($json) {
+    include "connection.php";
+    $data = json_decode($json, true);
+    if (!isset($data['requestId']) || !isset($data['userId'])) {
+      return json_encode(['error' => 'Request ID and User ID are required']);
+    }
+    try {
+      // Check if the latest status is still Pending
+      $sql = "SELECT c.statusR_name FROM tblrequeststatus b
+              INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+              WHERE b.reqS_reqId = :requestId
+              ORDER BY b.reqS_id DESC LIMIT 1";
+      $stmt = $conn->prepare($sql);
+      $stmt->bindParam(':requestId', $data['requestId']);
+      $stmt->execute();
+      $status = $stmt->fetch(PDO::FETCH_ASSOC);
+      if (!$status || strtolower($status['statusR_name']) !== 'pending') {
+        return json_encode(['error' => 'Only pending requests can be edited']);
+      }
+      // Update the request details
+      $updateSql = "UPDATE tblrequest SET req_purpose = :purpose, req_desc = :desc, req_budget = :budget, req_cashMethodId = :cashMethodId WHERE req_id = :requestId AND req_userId = :userId";
+      $updateStmt = $conn->prepare($updateSql);
+      $updateStmt->bindParam(':purpose', $data['purpose']);
+      $updateStmt->bindParam(':desc', $data['desc']);
+      $updateStmt->bindParam(':budget', $data['budget']);
+      $updateStmt->bindParam(':cashMethodId', $data['cashMethodId']);
+      $updateStmt->bindParam(':requestId', $data['requestId']);
+      $updateStmt->bindParam(':userId', $data['userId']);
+      if ($updateStmt->execute()) {
+        return json_encode(['success' => true]);
+      } else {
+        return json_encode(['error' => 'Failed to update request']);
+      }
+    } catch (PDOException $e) {
+      return json_encode(['error' => 'Database error occurred: ' . $e->getMessage()]);
+    }
+  }
 }
 
 $operation = isset($_POST["operation"]) ? $_POST["operation"] : "0";
@@ -384,6 +465,12 @@ switch ($operation) {
     break;
   case "getRequestCashByStatus":
     echo $employee->getRequestCashByStatus($json);
+    break;
+  case "cancelRequest":
+    echo $employee->cancelRequest($json);
+    break;
+  case "editRequest":
+    echo $employee->editRequest($json);
     break;
   default:
     echo json_encode(['error' => 'Invalid operation']);

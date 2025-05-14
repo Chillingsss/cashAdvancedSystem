@@ -180,21 +180,59 @@ class Admin {
   function getUserAvailableLimit($json) {
     try {
       include "connection.php";
-      
       $json = json_decode($json, true);
-      
-      $sql = "SELECT user_availableLimit FROM tbluser WHERE user_id = :userId";
-              
+      // Get the user's base available limit
+      $sql = "SELECT user_availableLimit as base_limit FROM tbluser WHERE user_id = :userId";
       $stmt = $conn->prepare($sql);
       $stmt->bindParam(':userId', $json['userId']);
       $stmt->execute();
-      
+      $baseLimit = 0;
       if ($stmt->rowCount() > 0) {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return json_encode(['available_limit' => $result['user_availableLimit']]);
+        $baseLimit = floatval($result['base_limit']);
       }
-      
-      return json_encode(['available_limit' => 0]);
+      // Get the sum of all completed requests for this user
+      $completedSql = "SELECT SUM(a.req_budget) as total_completed
+                      FROM tblrequest a
+                      INNER JOIN (
+                          SELECT reqS_reqId, MAX(reqS_id) as max_reqS_id
+                          FROM tblrequeststatus
+                          GROUP BY reqS_reqId
+                      ) latest_status ON a.req_id = latest_status.reqS_reqId
+                      INNER JOIN tblrequeststatus b ON b.reqS_id = latest_status.max_reqS_id
+                      INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                      WHERE a.req_userId = :userId 
+                      AND c.statusR_name = 'Completed'";
+      $completedStmt = $conn->prepare($completedSql);
+      $completedStmt->bindParam(':userId', $json['userId']);
+      $completedStmt->execute();
+      $completedResult = $completedStmt->fetch(PDO::FETCH_ASSOC);
+      $totalCompleted = floatval($completedResult['total_completed'] ?? 0);
+      // Get the sum of all approved (but not completed) requests for this user
+      $approvedSql = "SELECT SUM(a.req_budget) as total_approved
+                      FROM tblrequest a
+                      INNER JOIN (
+                          SELECT reqS_reqId, MAX(reqS_id) as max_reqS_id
+                          FROM tblrequeststatus
+                          GROUP BY reqS_reqId
+                      ) latest_status ON a.req_id = latest_status.reqS_reqId
+                      INNER JOIN tblrequeststatus b ON b.reqS_id = latest_status.max_reqS_id
+                      INNER JOIN tblstatusrequest c ON b.reqS_statusId = c.statusR_id
+                      WHERE a.req_userId = :userId 
+                      AND c.statusR_name = 'Approved'";
+      $approvedStmt = $conn->prepare($approvedSql);
+      $approvedStmt->bindParam(':userId', $json['userId']);
+      $approvedStmt->execute();
+      $approvedResult = $approvedStmt->fetch(PDO::FETCH_ASSOC);
+      $totalApproved = floatval($approvedResult['total_approved'] ?? 0);
+      // Calculate remaining limit for new approvals
+      $remainingLimit = $baseLimit - $totalCompleted - $totalApproved;
+      return json_encode([
+        'available_limit' => $remainingLimit,
+        'base_limit' => $baseLimit,
+        'total_completed' => $totalCompleted,
+        'total_approved' => $totalApproved
+      ]);
     } catch (PDOException $e) {
       error_log("Database error in getUserAvailableLimit: " . $e->getMessage());
       return json_encode(['error' => 'Database error occurred']);
