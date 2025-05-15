@@ -787,10 +787,28 @@ function editRequestHandler(requestId) {
 		const desc = document.getElementById("editDesc").value;
 		const budget = Number(document.getElementById("editBudget").value);
 		const cashMethodId = document.getElementById("editCashMethodId").value;
+
+		// Get available limit from session
+		const availableLimit = Number(getSecureSession("availableLimit") || 0);
+
+		// Validation
 		if (!purpose || !budget || !cashMethodId) {
 			showToast("All fields are required", "error");
 			return;
 		}
+
+		// Validate budget against available limit
+		if (budget > availableLimit) {
+			showToast(
+				`Request amount exceeds your available limit of ₱${availableLimit.toLocaleString(
+					undefined,
+					{ minimumFractionDigits: 2, maximumFractionDigits: 2 }
+				)}`,
+				"error"
+			);
+			return;
+		}
+
 		const formData = new FormData();
 		formData.append("operation", "editRequest");
 		formData.append(
